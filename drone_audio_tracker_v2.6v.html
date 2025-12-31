@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système Khéops v2.6 - Méthode de Chan</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #0f1419;
+            --bg-tertiary: #151c24;
+            --accent-red: #ff3b3b;
+            --accent-green: #00ff88;
+            --accent-cyan: #00d4ff;
+            --accent-yellow: #ffd700;
+            --accent-orange: #ff8c00;
+            --accent-pink: #ff00ff;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --border-color: rgba(0, 212, 255, 0.3);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        
+        body {
+            font-family: 'Courier New', Consolas, monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            grid-template-rows: auto 1fr;
+            gap: 10px;
+            padding: 10px;
+            height: 100vh;
+        }
+        
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 15px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green), var(--accent-cyan));
+        }
+        
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { width: 35px; height: 35px; }
+        
+        h1 {
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .version-tag {
+            font-size: 0.55rem;
+            color: var(--accent-pink);
+            background: rgba(255, 0, 255, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+            border: 1px solid rgba(255, 0, 255, 0.3);
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 4px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-box .value {
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-pink);
+        }
+        
+        .stat-box .label {
+            font-size: 0.5rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--accent-green);
+            border-radius: 12px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-dot {
+            width: 6px; height: 6px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .slowmo-indicator {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 255, 0.9);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            z-index: 9999;
+            display: none;
+            animation: slowmo-pulse 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes slowmo-pulse {
+            0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+            50% { opacity: 0.8; transform: translateX(-50%) scale(1.05); }
+        }
+        
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+        }
+        
+        .views-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 8px;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .view-panel {
+            position: relative;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .view-panel canvas, #map {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        #mapContainer {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        #mapOverlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 500;
+        }
+        
+        .view-label {
+            position: absolute;
+            top: 4px; left: 4px;
+            background: rgba(10, 14, 20, 0.9);
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-size: 0.55rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            z-index: 1000;
+        }
+        
+        .camera-active .view-label {
+            color: var(--accent-pink);
+            border-color: var(--accent-pink);
+            background: rgba(255, 0, 255, 0.2);
+            animation: blink 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .time-display {
+            position: absolute;
+            bottom: 4px; right: 4px;
+            background: rgba(10, 14, 20, 0.9);
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-size: 0.6rem;
+            z-index: 1000;
+        }
+        
+        .time-display span { color: var(--accent-cyan); font-weight: 600; }
+        
+        .controls-row {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 7px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-cyan);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 255, 136, 0.2));
+            border-color: var(--accent-cyan);
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            padding-right: 4px;
+            min-height: 0;
+        }
+        
+        .sidebar::-webkit-scrollbar { width: 5px; }
+        .sidebar::-webkit-scrollbar-track { background: var(--bg-primary); }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        .panel.fire-control {
+            border-color: var(--accent-pink);
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
+        }
+        
+        .panel-header {
+            padding: 6px 8px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .panel.fire-control .panel-header {
+            background: rgba(255, 0, 255, 0.1);
+        }
+        
+        .panel-header h3 {
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--accent-cyan);
+        }
+        
+        .panel.fire-control .panel-header h3 {
+            color: var(--accent-pink);
+        }
+        
+        .panel-icon {
+            width: 12px; height: 12px;
+            color: var(--accent-cyan);
+        }
+        
+        .panel.fire-control .panel-icon {
+            color: var(--accent-pink);
+        }
+        
+        .panel-content { padding: 8px; }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+        
+        .data-item {
+            background: var(--bg-tertiary);
+            padding: 5px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 212, 255, 0.08);
+        }
+        
+        .data-item.full-width { grid-column: 1 / -1; }
+        
+        .data-label {
+            font-size: 0.5rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 1px;
+        }
+        
+        .data-value {
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+        }
+        
+        .data-value .unit {
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        
+        .real-value { color: var(--accent-red); }
+        .estimated-value { color: var(--accent-green); }
+        .error-value { color: var(--accent-yellow); }
+        .fire-value { color: var(--accent-pink); }
+        
+        .fire-assessment {
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .fire-go {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.1));
+            border: 1px solid var(--accent-green);
+        }
+        
+        .fire-no-go {
+            background: linear-gradient(135deg, rgba(255, 59, 59, 0.2), rgba(200, 50, 50, 0.1));
+            border: 1px solid var(--accent-red);
+        }
+        
+        .fire-engaged {
+            background: linear-gradient(135deg, rgba(255, 0, 255, 0.3), rgba(200, 0, 200, 0.1));
+            border: 2px solid var(--accent-pink);
+            animation: fire-pulse 0.3s ease-in-out infinite;
+        }
+        
+        @keyframes fire-pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 0, 255, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(255, 0, 255, 0.8); }
+        }
+        
+        .fire-status {
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 3px;
+        }
+        
+        .fire-go .fire-status { color: var(--accent-green); }
+        .fire-no-go .fire-status { color: var(--accent-red); }
+        .fire-engaged .fire-status { color: var(--accent-pink); }
+        
+        .fire-details { font-size: 0.55rem; color: var(--text-secondary); }
+        
+        .slider-container { margin: 5px 0; }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.55rem;
+            margin-bottom: 2px;
+        }
+        
+        .slider-label span:first-child { color: var(--text-secondary); }
+        .slider-label span:last-child { color: var(--accent-cyan); font-weight: 600; }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px; height: 10px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .handover-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        
+        .handover-box {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .handover-kheops {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        
+        .handover-kheops.active {
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        
+        .handover-camera {
+            background: rgba(255, 0, 255, 0.2);
+            border: 1px solid var(--accent-pink);
+            color: var(--accent-pink);
+        }
+        
+        .handover-camera.active {
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+            animation: blink 0.5s ease-in-out infinite;
+        }
+        
+        .handover-arrow {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+        
+        .doppler-indicator {
+            margin-top: 8px;
+            padding: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 0.55rem;
+        }
+        
+        .doppler-bar {
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .doppler-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: all 0.1s;
+        }
+        
+        .doppler-deadzone {
+            position: absolute;
+            top: 0;
+            left: 45%;
+            width: 10%;
+            height: 100%;
+            background: rgba(255, 59, 59, 0.3);
+            border-left: 1px solid var(--accent-red);
+            border-right: 1px solid var(--accent-red);
+        }
+        
+        /* Leaflet */
+        .leaflet-container { background: var(--bg-primary) !important; }
+        .leaflet-control-zoom { border: 1px solid var(--border-color) !important; border-radius: 4px !important; }
+        .leaflet-control-zoom a {
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            width: 24px !important; height: 24px !important;
+            line-height: 24px !important; font-size: 12px !important;
+        }
+        .leaflet-control-attribution { display: none; }
+    </style>
+</head>
+<body>
+    <div class="slowmo-indicator" id="slowmoIndicator">⏱️ SLOW-MO x0.3</div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 50 50" fill="none">
+                        <polygon points="25,5 45,40 5,40" stroke="url(#grad)" stroke-width="2" fill="none"/>
+                        <circle cx="25" cy="28" r="4" fill="#00d4ff"/>
+                        <circle cx="15" cy="38" r="3" fill="#00ff88"/>
+                        <circle cx="35" cy="38" r="3" fill="#00ff88"/>
+                        <defs>
+                            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#00d4ff"/>
+                                <stop offset="100%" style="stop-color:#00ff88"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div>
+                    <h1>KHÉOPS <span class="version-tag">v2.6</span></h1>
+                    <div style="font-size: 0.5rem; color: var(--text-secondary);">
+                        Méthode de Chan - Solution Analytique
+                    </div>
+                </div>
+            </div>
+            
+            <div class="header-stats">
+                <div class="stat-box">
+                    <div class="value" id="killCount">0</div>
+                    <div class="label">Kills</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="totalShots">0</div>
+                    <div class="label">Tirs</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="accuracy">--%</div>
+                    <div class="label">Précision</div>
+                </div>
+            </div>
+            
+            <div class="status-badge">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">PRÊT</span>
+            </div>
+        </header>
+        
+        <div class="main-area">
+            <div class="views-container">
+                <div class="view-panel">
+                    <div class="view-label">KHÉOPS - VUE DESSUS</div>
+                    <div id="mapContainer">
+                        <div id="map"></div>
+                        <canvas id="mapOverlay"></canvas>
+                    </div>
+                </div>
+                
+                <div class="view-panel">
+                    <div class="view-label">VUE LATÉRALE</div>
+                    <canvas id="canvasSide"></canvas>
+                    <div class="time-display">T+ <span id="simTime">0.00</span>s</div>
+                </div>
+                
+                <div class="view-panel" id="cameraPanel">
+                    <div class="view-label">CAMÉRA TIR - STANDBY</div>
+                    <canvas id="canvasCamera"></canvas>
+                </div>
+                
+                <div class="view-panel" id="reticlePanel">
+                    <div class="view-label">VISEUR - STANDBY</div>
+                    <canvas id="canvasReticle"></canvas>
+                </div>
+            </div>
+            
+            <div class="controls-row">
+                <button class="btn btn-primary" id="startBtn" onclick="toggleSimulation()">▶ START</button>
+                <button class="btn" onclick="resetSimulation()">⟲ RESET</button>
+                <button class="btn" onclick="resetStats()">📊 RESET STATS</button>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <!-- CONDUITE DE TIR -->
+            <div class="panel fire-control">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <h3>CONDUITE DE TIR</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="handover-indicator">
+                        <div class="handover-box handover-kheops active" id="hoverKheops">KHÉOPS</div>
+                        <div class="handover-arrow">→</div>
+                        <div class="handover-box handover-camera" id="hoverCamera">CAMÉRA</div>
+                    </div>
+                    
+                    <div id="fireAssessment" class="fire-assessment fire-no-go">
+                        <div class="fire-status">STANDBY</div>
+                        <div class="fire-details">En attente</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CIBLE ESTIMÉE -->
+            <div class="panel fire-control">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+                    </svg>
+                    <h3>CIBLE ESTIMÉE</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <div class="data-label">Latitude</div>
+                            <div class="data-value fire-value"><span id="fireLat">--</span><span class="unit">°N</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Longitude</div>
+                            <div class="data-value fire-value"><span id="fireLon">--</span><span class="unit">°E</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Altitude</div>
+                            <div class="data-value fire-value"><span id="fireAlt">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Distance</div>
+                            <div class="data-value fire-value"><span id="fireDist">--</span><span class="unit">m</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- DOPPLER STATUS -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                    <h3>DOPPLER</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <div class="data-label">V. Radiale</div>
+                            <div class="data-value" id="vRadialValue"><span>--</span><span class="unit">m/s</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Intégration</div>
+                            <div class="data-value" id="integrationStatus"><span>--</span></div>
+                        </div>
+                        <div class="data-item full-width">
+                            <div class="data-label">Vitesse du Son</div>
+                            <div class="data-value" style="color: var(--accent-cyan);"><span id="soundSpeedDisplay">343.0</span><span class="unit">m/s</span></div>
+                        </div>
+                    </div>
+                    <div class="doppler-indicator">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Éloignement</span>
+                            <span id="dopplerLabel">0 m/s</span>
+                            <span>Approche</span>
+                        </div>
+                        <div class="doppler-bar">
+                            <div class="doppler-deadzone"></div>
+                            <div class="doppler-fill" id="dopplerFill"></div>
+                        </div>
+                        <div style="text-align: center; margin-top: 4px; color: var(--accent-red); font-size: 0.5rem;">
+                            Zone morte ±2 m/s (pas d'intégration)
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ERREURS -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+                    </svg>
+                    <h3>PRÉCISION</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <div class="data-label">Err. Pos 3D</div>
+                            <div class="data-value error-value" style="color: var(--accent-orange);"><span id="posError3D">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Err. Distance</div>
+                            <div class="data-value error-value"><span id="distanceError">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Err. %</div>
+                            <div class="data-value error-value"><span id="distanceErrorPct">--</span><span class="unit">%</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Dist. Réelle</div>
+                            <div class="data-value real-value"><span id="realDistance">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Dist. Estimée</div>
+                            <div class="data-value estimated-value"><span id="estDistance">--</span><span class="unit">m</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PARAMÈTRES -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6"/>
+                    </svg>
+                    <h3>PARAMÈTRES</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Seuil Handover</span>
+                            <span id="handoverDisplay">35 m</span>
+                        </div>
+                        <input type="range" min="20" max="60" step="5" value="35" oninput="updateHandover(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Vitesse Drone</span>
+                            <span id="speedDisplay">12 m/s</span>
+                        </div>
+                        <input type="range" min="3" max="25" step="1" value="12" oninput="updateSpeed(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Dispersion Chevrotine</span>
+                            <span id="spreadDisplay">5 m</span>
+                        </div>
+                        <input type="range" min="2" max="10" step="0.5" value="5" oninput="updateSpread(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Délai Respawn</span>
+                            <span id="respawnDisplay">2.0 s</span>
+                        </div>
+                        <input type="range" min="0.5" max="5" step="0.5" value="2" oninput="updateRespawn(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Température</span>
+                            <span id="tempDisplay">20 °C</span>
+                        </div>
+                        <input type="range" min="-20" max="45" step="1" value="20" oninput="updateTemperature(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Humidité</span>
+                            <span id="humidityDisplay">50 %</span>
+                        </div>
+                        <input type="range" min="0" max="100" step="5" value="50" oninput="updateHumidity(this.value)">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // CONSTANTES
+    // ============================================================
+    const BUBBLE_RADIUS = 150.0;
+    const TRACE_DURATION = 5.0;
+    const BASE_DT = 0.02;
+    const RX_LAT = 43.2142;
+    const RX_LON = 5.3665;
+    // ============================================================
+    // CONSTANTES GÉODÉSIQUES (WGS84)
+    // ============================================================
+    const WGS84_A = 6378137.0;           // Demi-grand axe (m)
+    const WGS84_B = 6356752.314245;      // Demi-petit axe (m)
+    const WGS84_E2 = 1 - (WGS84_B * WGS84_B) / (WGS84_A * WGS84_A); // Excentricité²
+    
+    // Rayon de courbure méridien (Nord-Sud) à une latitude donnée
+    function radiusMeridian(latRad) {
+        const sinLat = Math.sin(latRad);
+        return WGS84_A * (1 - WGS84_E2) / Math.pow(1 - WGS84_E2 * sinLat * sinLat, 1.5);
+    }
+    
+    // Rayon de courbure premier vertical (Est-Ouest) à une latitude donnée
+    function radiusPrimeVertical(latRad) {
+        const sinLat = Math.sin(latRad);
+        return WGS84_A / Math.sqrt(1 - WGS84_E2 * sinLat * sinLat);
+    }
+    
+    // Mètres par degré de latitude à une latitude donnée
+    function metersPerDegLat(latDeg) {
+        const latRad = latDeg * Math.PI / 180;
+        return radiusMeridian(latRad) * Math.PI / 180;
+    }
+    
+    // Mètres par degré de longitude à une latitude donnée
+    function metersPerDegLon(latDeg) {
+        const latRad = latDeg * Math.PI / 180;
+        return radiusPrimeVertical(latRad) * Math.cos(latRad) * Math.PI / 180;
+    }
+    
+    // Zone morte Doppler - PAS d'intégration si |v_radiale| < seuil
+    const DOPPLER_DEADZONE = 2.0; // m/s
+    
+    // ============================================================
+    // VITESSE DU SON (formule de Cramer, précise)
+    // ============================================================
+    // Température en °C, humidité relative en % (0-100)
+    let TEMPERATURE = 20.0;
+    let HUMIDITY = 50.0;
+    
+    function calculateSpeedOfSound(tempC, humidityPct) {
+        // Formule simplifiée de Cramer (précision ~0.1%)
+        // c = 331.3 * sqrt(1 + T/273.15) * (1 + 0.0124 * h)
+        // où h = humidité relative * pression vapeur saturante / pression atmo
+        
+        const T = tempC + 273.15; // Kelvin
+        
+        // Vitesse dans l'air sec
+        const cDry = 331.3 * Math.sqrt(T / 273.15);
+        
+        // Correction humidité (approximation linéaire valide pour h < 80%)
+        // Pression vapeur saturante (formule de Magnus)
+        const pSat = 610.78 * Math.exp((17.27 * tempC) / (tempC + 237.3)); // Pa
+        const pAtm = 101325; // Pa (niveau mer)
+        const h = (humidityPct / 100) * (pSat / pAtm);
+        
+        // Correction: l'humidité augmente légèrement la vitesse (~0.1-0.6%)
+        const cHumid = cDry * (1 + 0.16 * h);
+        
+        return cHumid;
+    }
+    
+    let SPEED_OF_SOUND = calculateSpeedOfSound(TEMPERATURE, HUMIDITY);
+    let HANDOVER_DISTANCE = 35.0;
+    let SHOTGUN_SPREAD = 5.0;
+    let RESPAWN_DELAY = 2.0;
+    
+    const SENSORS = [
+        { x: -0.5, y: -0.5, z: 0.0 },
+        { x:  0.5, y: -0.5, z: 0.0 },
+        { x:  0.5, y:  0.5, z: 0.0 },
+        { x: -0.5, y:  0.5, z: 0.0 },
+        { x:  0.0, y:  0.0, z: 0.636 }
+    ];
+    
+    // ============================================================
+    // ÉTAT
+    // ============================================================
+    let sim = {
+        running: false,
+        time: 0,
+        timeScale: 1.0, // 1.0 normal, 0.3 slowmo
+        
+        drone: { x: 0, y: 0, z: 40, vx: 0, vy: 0, vz: 0, speed: 12 },
+        traceReal: [],
+        traceEst: [],
+        
+        est: {
+            azimuth: 0, elevation: 0,
+            distance: 100, distanceGeom: 100, distanceIntegrated: 100,
+            x: 80, y: 0, z: 40, // Position cartésienne estimée
+            radialVelocity: 0, lastRadialVelocity: 0,
+            azEMA: { f: 0, m: 0, s: 0 },
+            elEMA: { f: 0, m: 0, s: 0 },
+            distEMA: { f: 100, m: 100, s: 100 },
+            azBuffer: [], elBuffer: [],
+            count: 0,
+            dopplerIntegrating: false // Flag pour UI
+        },
+        
+        fireControl: {
+            mode: 'kheops',
+            cameraAz: 0, cameraEl: 0,
+            tracking: false, lockOn: false,
+            shotsFired: 0, lastShotTime: 0, shotCooldown: 0.3,
+            targetCentered: false, droneDestroyed: false,
+            respawnTimer: 0
+        },
+        
+        // Stats globales
+        stats: {
+            totalKills: 0,
+            totalShots: 0
+        }
+    };
+    
+    let map, mapOverlay, ctxMap;
+    let canvasSide, ctxSide;
+    let canvasCamera, ctxCamera;
+    let canvasReticle, ctxReticle;
+    // Variables de position Khéops (modifiables)
+    let rxLat = RX_LAT;
+    let rxLon = RX_LON;
+    let handoverCircle; // Cercle violet (handover)
+    let bubbleCircle;   // Cercle cyan (bulle)
+    let kheopsMarker;   // Marqueur central
+    let animationId = null;
+    
+    // ============================================================
+    // CONVERSION COORDONNÉES (géodésique précise)
+    // ============================================================
+    function metersToLatLon(x, y) {
+        // Conversion locale autour du récepteur
+        const mPerDegLat = metersPerDegLat(rxLat);
+        const mPerDegLon = metersPerDegLon(rxLat);
+        return { 
+            lat: rxLat + y / mPerDegLat, 
+            lon: rxLon + x / mPerDegLon 
+        };
+    }
+    
+    function latLonToMeters(lat, lon) {
+        const mPerDegLat = metersPerDegLat(rxLat);
+        const mPerDegLon = metersPerDegLon(rxLat);
+        return {
+            x: (lon - rxLon) * mPerDegLon,
+            y: (lat - rxLat) * mPerDegLat
+        };
+    }
+    
+    function normalize(v) {
+        const m = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+        return m < 1e-10 ? { x: 0, y: 0, z: 1 } : { x: v.x/m, y: v.y/m, z: v.z/m };
+    }
+    
+    function magnitude(v) { return Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); }
+    function dot(a, b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+    
+    function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1,3), 16);
+        const g = parseInt(hex.slice(3,5), 16);
+        const b = parseInt(hex.slice(5,7), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+    }
+    
+    // ============================================================
+    // INIT
+    // ============================================================
+    function init() {
+        map = L.map('map', { center: [rxLat, rxLon], zoom: 17, zoomControl: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        bubbleCircle = L.circle([rxLat, rxLon], { radius: BUBBLE_RADIUS, color: '#00d4ff', fillOpacity: 0.05, weight: 2, dashArray: '5,5' }).addTo(map);
+        handoverCircle = L.circle([rxLat, rxLon], { radius: HANDOVER_DISTANCE, color: '#ff00ff', fillOpacity: 0.08, weight: 2 }).addTo(map);
+        kheopsMarker = L.circleMarker([rxLat, rxLon], { radius: 6, color: '#8b5cf6', fillColor: '#8b5cf6', fillOpacity: 1 }).addTo(map);
+        
+        // Clic sur la carte pour déplacer Khéops
+        map.on('click', function(e) {
+            rxLat = e.latlng.lat;
+            rxLon = e.latlng.lng;
+            // Mettre à jour les cercles et le marqueur
+            bubbleCircle.setLatLng([rxLat, rxLon]);
+            handoverCircle.setLatLng([rxLat, rxLon]);
+            kheopsMarker.setLatLng([rxLat, rxLon]);
+        });
+        
+        mapOverlay = document.getElementById('mapOverlay');
+        ctxMap = mapOverlay.getContext('2d');
+        canvasSide = document.getElementById('canvasSide');
+        ctxSide = canvasSide.getContext('2d');
+        canvasCamera = document.getElementById('canvasCamera');
+        ctxCamera = canvasCamera.getContext('2d');
+        canvasReticle = document.getElementById('canvasReticle');
+        ctxReticle = canvasReticle.getContext('2d');
+        
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+        map.on('move zoom', drawMapOverlay);
+        
+        spawnDrone();
+        draw();
+    }
+    
+    function resizeCanvases() {
+        const mapC = document.getElementById('mapContainer');
+        mapOverlay.width = mapC.clientWidth;
+        mapOverlay.height = mapC.clientHeight;
+        
+        [canvasSide, canvasCamera, canvasReticle].forEach(c => {
+            const r = c.parentElement.getBoundingClientRect();
+            c.width = r.width;
+            c.height = r.height;
+        });
+        
+        if (!sim.running) draw();
+    }
+    
+    function spawnDrone() {
+        const angle = Math.random() * 2 * Math.PI;
+        const r = BUBBLE_RADIUS * 0.95;
+        
+        sim.drone.x = r * Math.cos(angle);
+        sim.drone.y = r * Math.sin(angle);
+        sim.drone.z = 25 + Math.random() * 30;
+        
+        const toCenter = normalize({ x: -sim.drone.x, y: -sim.drone.y, z: 0 });
+        const dev = (Math.random() - 0.5) * Math.PI / 4;
+        const c = Math.cos(dev), s = Math.sin(dev);
+        
+        sim.drone.vx = sim.drone.speed * (toCenter.x * c - toCenter.y * s);
+        sim.drone.vy = sim.drone.speed * (toCenter.x * s + toCenter.y * c);
+        sim.drone.vz = 0;
+        
+        const realDist = magnitude(sim.drone);
+        
+        // Reset estimateur - ON NE TRICHE PAS !
+        // Départ aveugle : azimuth=0, elevation=0, distance arbitraire
+        sim.est = {
+            azimuth: 0,
+            elevation: 0,
+            distance: 80, // Distance arbitraire, pas basée sur realDist
+            distanceGeom: 80,
+            distanceIntegrated: 80,
+            radialVelocity: 0, lastRadialVelocity: 0,
+            azEMA: { f: 0, m: 0, s: 0 },
+            elEMA: { f: 0, m: 0, s: 0 },
+            distEMA: { f: 80, m: 80, s: 80 },
+            azBuffer: [], elBuffer: [],
+            count: 0,
+            dopplerIntegrating: false
+        };
+        
+        sim.fireControl = {
+            mode: 'kheops',
+            cameraAz: 0, cameraEl: 0,
+            tracking: false, lockOn: false,
+            visualContact: false, // La caméra a-t-elle vu le drone réel ?
+            shotsFired: 0, lastShotTime: 0, shotCooldown: 0.3,
+            targetCentered: false, droneDestroyed: false,
+            respawnTimer: 0
+        };
+        
+        sim.traceReal = [];
+        sim.traceEst = [];
+        sim.timeScale = 1.0;
+    }
+    
+    // ============================================================
+    // ESTIMATION TDOA
+    // ============================================================
+    function computeTDOA(pos) {
+        const toa = SENSORS.map(s => Math.sqrt((pos.x-s.x)**2 + (pos.y-s.y)**2 + (pos.z-s.z)**2) / SPEED_OF_SOUND);
+        const tdoas = [];
+        for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) tdoas.push({ i, j, value: toa[i] - toa[j] });
+        return { tdoas, toa };
+    }
+    
+    // ============================================================
+    // MÉTHODE DE CHAN - Solution analytique TDOA 3D
+    // ============================================================
+    
+    function locateDroneChan(tdoas) {
+        // Extraire les d_i0 = c * tau_i0 (distances différentielles par rapport à S0)
+        const d10 = getTDOA(tdoas, 1, 0) * SPEED_OF_SOUND; // R1 - R0
+        const d20 = getTDOA(tdoas, 2, 0) * SPEED_OF_SOUND; // R2 - R0
+        const d30 = getTDOA(tdoas, 3, 0) * SPEED_OF_SOUND; // R3 - R0
+        const d40 = getTDOA(tdoas, 4, 0) * SPEED_OF_SOUND; // R4 - R0
+        
+        const di0 = [d10, d20, d30, d40];
+        
+        // Construire le système A * [x, y, z, R0]^T = B
+        const A = [];
+        const B = [];
+        
+        for (let i = 1; i < 5; i++) {
+            const Si = SENSORS[i];
+            const S0 = SENSORS[0];
+            const d = di0[i - 1];
+            
+            // Ligne de A : [xi - x0, yi - y0, zi - z0, d_i0]
+            A.push([
+                Si.x - S0.x,
+                Si.y - S0.y,
+                Si.z - S0.z,
+                d
+            ]);
+            
+            // Élément de B : 0.5 * (|Si|² - |S0|² - d_i0²)
+            const Si2 = Si.x**2 + Si.y**2 + Si.z**2;
+            const S02 = S0.x**2 + S0.y**2 + S0.z**2;
+            B.push(0.5 * (Si2 - S02 - d**2));
+        }
+        
+        // Résoudre le système 4x4
+        const result = solveLinearSystem4x4(A, B);
+        
+        return {
+            x: result[0],
+            y: result[1],
+            z: Math.max(1, result[2]), // Z >= 1m
+            r0: result[3]
+        };
+    }
+    
+    // Récupérer un TDOA (gère l'ordre i,j ou j,i)
+    function getTDOA(tdoas, i, j) {
+        const direct = tdoas.find(t => t.i === i && t.j === j);
+        if (direct) return direct.value;
+        const inverse = tdoas.find(t => t.i === j && t.j === i);
+        if (inverse) return -inverse.value;
+        return 0;
+    }
+    
+    // Solveur Gauss-Jordan pour système 4x4
+    function solveLinearSystem4x4(A, B) {
+        const n = 4;
+        // Copier pour ne pas modifier les originaux
+        const M = A.map(row => [...row]);
+        const b = [...B];
+        
+        // Élimination de Gauss avec pivot partiel
+        for (let i = 0; i < n; i++) {
+            // Chercher le pivot max
+            let maxRow = i;
+            for (let k = i + 1; k < n; k++) {
+                if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) maxRow = k;
+            }
+            // Échanger les lignes
+            [M[i], M[maxRow]] = [M[maxRow], M[i]];
+            [b[i], b[maxRow]] = [b[maxRow], b[i]];
+            
+            // Vérifier pivot non nul
+            if (Math.abs(M[i][i]) < 1e-12) continue;
+            
+            // Élimination
+            for (let j = i + 1; j < n; j++) {
+                const factor = M[j][i] / M[i][i];
+                b[j] -= factor * b[i];
+                for (let k = i; k < n; k++) {
+                    M[j][k] -= factor * M[i][k];
+                }
+            }
+        }
+        
+        // Substitution arrière
+        const x = new Array(n).fill(0);
+        for (let i = n - 1; i >= 0; i--) {
+            if (Math.abs(M[i][i]) < 1e-12) continue;
+            let sum = 0;
+            for (let k = i + 1; k < n; k++) {
+                sum += M[i][k] * x[k];
+            }
+            x[i] = (b[i] - sum) / M[i][i];
+        }
+        
+        return x;
+    }
+    
+    function estimateDirection(tdoas) {
+        const pairs = [{ i: 0, j: 1 }, { i: 0, j: 2 }, { i: 0, j: 3 }, { i: 0, j: 4 }];
+        const A = [], b = [];
+        for (const p of pairs) {
+            const si = SENSORS[p.i], sj = SENSORS[p.j];
+            A.push([sj.x - si.x, sj.y - si.y, sj.z - si.z]);
+            b.push(tdoas.find(t => t.i === p.i && t.j === p.j).value * SPEED_OF_SOUND);
+        }
+        const dir = solveLeastSquares(A, b);
+        const u = normalize({ x: dir[0], y: dir[1], z: dir[2] });
+        return { azimuth: Math.atan2(u.y, u.x), elevation: Math.asin(Math.max(-1, Math.min(1, u.z))), u };
+    }
+    
+    function solveLeastSquares(A, b) {
+        const ATA = [[0,0,0],[0,0,0],[0,0,0]], ATb = [0,0,0];
+        for (let i = 0; i < A.length; i++) {
+            for (let j = 0; j < 3; j++) {
+                ATb[j] += A[i][j] * b[i];
+                for (let k = 0; k < 3; k++) ATA[j][k] += A[i][j] * A[i][k];
+            }
+        }
+        return solve3x3(ATA, ATb);
+    }
+    
+    function solve3x3(M, v) {
+        const det = M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1]) - M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0]) + M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
+        if (Math.abs(det) < 1e-12) return [0, 0, 1];
+        const inv = [
+            [(M[1][1]*M[2][2]-M[1][2]*M[2][1])/det, (M[0][2]*M[2][1]-M[0][1]*M[2][2])/det, (M[0][1]*M[1][2]-M[0][2]*M[1][1])/det],
+            [(M[1][2]*M[2][0]-M[1][0]*M[2][2])/det, (M[0][0]*M[2][2]-M[0][2]*M[2][0])/det, (M[0][2]*M[1][0]-M[0][0]*M[1][2])/det],
+            [(M[1][0]*M[2][1]-M[1][1]*M[2][0])/det, (M[0][1]*M[2][0]-M[0][0]*M[2][1])/det, (M[0][0]*M[1][1]-M[0][1]*M[1][0])/det]
+        ];
+        return [inv[0][0]*v[0]+inv[0][1]*v[1]+inv[0][2]*v[2], inv[1][0]*v[0]+inv[1][1]*v[1]+inv[1][2]*v[2], inv[2][0]*v[0]+inv[2][1]*v[1]+inv[2][2]*v[2]];
+    }
+    
+    function estimateDistanceGeometric(toa, u) {
+        let r = toa.reduce((a,b)=>a+b,0)/toa.length * SPEED_OF_SOUND;
+        for (let iter = 0; iter < 5; iter++) {
+            let sumErr = 0, sumGrad = 0;
+            const px = r*u.x, py = r*u.y, pz = r*u.z;
+            for (let i = 1; i < SENSORS.length; i++) {
+                const s = SENSORS[i], s0 = SENSORS[0];
+                const d = Math.sqrt((px-s.x)**2+(py-s.y)**2+(pz-s.z)**2);
+                const d0 = Math.sqrt((px-s0.x)**2+(py-s0.y)**2+(pz-s0.z)**2);
+                const err = (d-d0)/SPEED_OF_SOUND - (toa[i]-toa[0]);
+                sumErr += err*err;
+                sumGrad += 2*err*((u.x*(px-s.x)+u.y*(py-s.y)+u.z*(pz-s.z))/d - (u.x*(px-s0.x)+u.y*(py-s0.y)+u.z*(pz-s0.z))/d0)/SPEED_OF_SOUND;
+            }
+            if (Math.abs(sumGrad) > 1e-10) r -= 0.5*sumErr/sumGrad;
+            r = Math.max(10, Math.min(BUBBLE_RADIUS*2, r));
+        }
+        return r;
+    }
+    
+    function ema(old, newVal, period) { return 2/(period+1)*newVal + (1-2/(period+1))*old; }
+    
+    function updateEstimator() {
+        const dronePos = sim.drone, vel = { x: dronePos.vx, y: dronePos.vy, z: dronePos.vz };
+        const { tdoas, toa } = computeTDOA(dronePos);
+        
+        const e = sim.est;
+        e.count++;
+        
+        // =====================================================
+        // MÉTHODE DE CHAN - Solution analytique directe
+        // =====================================================
+        const chanResult = locateDroneChan(tdoas);
+        
+        // Position directe (pas d'EMA, Chan donne la solution exacte)
+        e.x = chanResult.x;
+        e.y = chanResult.y;
+        e.z = chanResult.z;
+        
+        // Conversion en coordonnées sphériques
+        e.distance = Math.sqrt(e.x**2 + e.y**2 + e.z**2);
+        e.azimuth = Math.atan2(e.y, e.x);
+        e.elevation = Math.asin(Math.max(-1, Math.min(1, e.z / e.distance)));
+        
+        // Vitesse radiale (pour UI)
+        const vRad = dot(vel, normalize({ x: -dronePos.x, y: -dronePos.y, z: -dronePos.z }));
+        e.radialVelocity = vRad;
+        e.lastRadialVelocity = vRad;
+        
+        // Garder compatibilité UI
+        e.distanceGeom = e.distance;
+        e.distanceIntegrated = e.distance;
+        e.dopplerIntegrating = Math.abs(vRad) >= DOPPLER_DEADZONE;
+    }
+    
+    // ============================================================
+    // CONDUITE DE TIR
+    // ============================================================
+    function updateFireControl() {
+        const fc = sim.fireControl;
+        const e = sim.est;
+        const dt = BASE_DT * sim.timeScale;
+        
+        // Respawn timer
+        if (fc.droneDestroyed) {
+            fc.respawnTimer += dt;
+            if (fc.respawnTimer >= RESPAWN_DELAY) {
+                spawnDrone();
+            }
+            return;
+        }
+        
+        // Handover basé sur distance ESTIMÉE
+        const wasCamera = fc.mode === 'camera';
+        
+        if (e.distance < HANDOVER_DISTANCE && fc.mode === 'kheops') {
+            fc.mode = 'camera';
+            fc.tracking = true;
+            sim.timeScale = 0.3; // SLOWMO!
+        } else if (e.distance >= HANDOVER_DISTANCE + 10 && fc.mode === 'camera') {
+            fc.mode = 'kheops';
+            fc.tracking = false;
+            fc.lockOn = false;
+            fc.visualContact = false; // Reset pour prochain handover
+            sim.timeScale = 1.0; // Normal
+        }
+        
+        // Slowmo indicator
+        document.getElementById('slowmoIndicator').style.display = (sim.timeScale < 1) ? 'block' : 'none';
+        
+        // Mode caméra - tracking
+        if (fc.mode === 'camera' && fc.tracking) {
+            const trackSpeed = 0.12;
+            
+            // Position RÉELLE du drone (ce que la caméra voit vraiment)
+            const realDist = magnitude(sim.drone);
+            const realAz = Math.atan2(sim.drone.y, sim.drone.x);
+            const realEl = Math.asin(sim.drone.z / realDist);
+            
+            // Au début, la caméra pointe vers l'estimé (handover de Khéops)
+            // Mais dès qu'elle "voit" le drone réel, elle le track directement
+            let targetAz, targetEl;
+            
+            // Vérifier si le drone réel est dans le FOV actuel (~30°)
+            let azOffFromCam = realAz - fc.cameraAz;
+            if (azOffFromCam > Math.PI) azOffFromCam -= 2*Math.PI;
+            if (azOffFromCam < -Math.PI) azOffFromCam += 2*Math.PI;
+            const elOffFromCam = realEl - fc.cameraEl;
+            const inFOV = Math.abs(azOffFromCam) < Math.PI/6 && Math.abs(elOffFromCam) < Math.PI/6;
+            
+            if (inFOV || fc.visualContact) {
+                // Caméra voit le drone réel → track le RÉEL
+                fc.visualContact = true;
+                targetAz = realAz;
+                targetEl = realEl;
+            } else {
+                // Pas encore de contact visuel → suivre l'estimé (guidage Khéops)
+                targetAz = e.azimuth;
+                targetEl = e.elevation;
+            }
+            
+            let azDiff = targetAz - fc.cameraAz;
+            if (azDiff > Math.PI) azDiff -= 2*Math.PI;
+            if (azDiff < -Math.PI) azDiff += 2*Math.PI;
+            const elDiff = targetEl - fc.cameraEl;
+            
+            fc.cameraAz += Math.max(-trackSpeed, Math.min(trackSpeed, azDiff * 0.25));
+            fc.cameraEl += Math.max(-trackSpeed, Math.min(trackSpeed, elDiff * 0.25));
+            
+            // Lock basé sur le drone RÉEL (pas l'estimé)
+            let finalAzOff = realAz - fc.cameraAz;
+            if (finalAzOff > Math.PI) finalAzOff -= 2*Math.PI;
+            if (finalAzOff < -Math.PI) finalAzOff += 2*Math.PI;
+            const finalElOff = realEl - fc.cameraEl;
+            const angularError = Math.sqrt(finalAzOff*finalAzOff + finalElOff*finalElOff) * 180/Math.PI;
+            
+            fc.targetCentered = angularError < 3;
+            fc.lockOn = angularError < 1.5;
+            
+            // TIR AUTO
+            if (fc.lockOn && e.distance < HANDOVER_DISTANCE && sim.time - fc.lastShotTime > fc.shotCooldown) {
+                const realDist = magnitude(sim.drone);
+                const realAz = Math.atan2(sim.drone.y, sim.drone.x);
+                const realEl = Math.asin(sim.drone.z / realDist);
+                
+                const aimError = Math.sqrt((fc.cameraAz - realAz)**2 + (fc.cameraEl - realEl)**2) * realDist;
+                
+                fc.shotsFired++;
+                sim.stats.totalShots++;
+                fc.lastShotTime = sim.time;
+                
+                if (aimError < SHOTGUN_SPREAD) {
+                    fc.droneDestroyed = true;
+                    fc.respawnTimer = 0;
+                    sim.stats.totalKills++;
+                    console.log(`KILL #${sim.stats.totalKills} - Erreur: ${aimError.toFixed(2)}m`);
+                }
+            }
+        }
+    }
+    
+    // ============================================================
+    // PHYSIQUE DRONE
+    // ============================================================
+    function updateDrone() {
+        if (sim.fireControl.droneDestroyed) return;
+        
+        const d = sim.drone;
+        const dt = BASE_DT * sim.timeScale;
+        
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        d.z += d.vz * dt;
+        
+        // Rebond bulle avec amortissement vers le centre
+        const distXY = Math.sqrt(d.x*d.x + d.y*d.y);
+        if (distXY > BUBBLE_RADIUS) {
+            // Normale vers le centre
+            const nx = -d.x/distXY, ny = -d.y/distXY;
+            
+            // Rebond classique
+            const vn = d.vx*nx + d.vy*ny;
+            d.vx -= 2*vn*nx; 
+            d.vy -= 2*vn*ny;
+            
+            // Amortissement: ajouter 20% de vitesse vers le centre
+            // Évite les trajectoires orbitales infinies
+            const towardCenter = 0.20;
+            d.vx += nx * d.speed * towardCenter;
+            d.vy += ny * d.speed * towardCenter;
+            
+            // Renormaliser la vitesse
+            const newSpeed = Math.sqrt(d.vx*d.vx + d.vy*d.vy);
+            if (newSpeed > 0.1) {
+                d.vx = d.vx / newSpeed * d.speed;
+                d.vy = d.vy / newSpeed * d.speed;
+            }
+            
+            // Repositionner dans la bulle
+            d.x = d.x / distXY * (BUBBLE_RADIUS - 1);
+            d.y = d.y / distXY * (BUBBLE_RADIUS - 1);
+        }
+        
+        // Rebond altitude
+        if (d.z < 15) { d.z = 15; d.vz = Math.abs(d.vz)*0.8; }
+        if (d.z > 80) { d.z = 80; d.vz = -Math.abs(d.vz)*0.8; }
+    }
+    
+    function updateTraces() {
+        const t = sim.time;
+        if (!sim.fireControl.droneDestroyed) {
+            sim.traceReal.push({ x: sim.drone.x, y: sim.drone.y, z: sim.drone.z, t });
+        }
+        const e = sim.est;
+        sim.traceEst.push({ x: e.distance*Math.cos(e.azimuth)*Math.cos(e.elevation), y: e.distance*Math.sin(e.azimuth)*Math.cos(e.elevation), z: e.distance*Math.sin(e.elevation), t });
+        
+        const cutoff = t - TRACE_DURATION;
+        sim.traceReal = sim.traceReal.filter(p => p.t > cutoff);
+        sim.traceEst = sim.traceEst.filter(p => p.t > cutoff);
+    }
+    
+    // ============================================================
+    // DESSIN
+    // ============================================================
+    function draw() {
+        drawMapOverlay();
+        drawSide();
+        drawCamera();
+        drawReticle();
+    }
+    
+    function drawMapOverlay() {
+        const w = mapOverlay.width, h = mapOverlay.height;
+        ctxMap.clearRect(0, 0, w, h);
+        if (!map) return;
+        
+        function toPixel(lat, lon) {
+            const p = map.latLngToContainerPoint([lat, lon]);
+            return { x: p.x, y: p.y };
+        }
+        
+        // Traces
+        [{ trace: sim.traceReal, color: 'rgba(255,59,59,0.6)' }, { trace: sim.traceEst, color: 'rgba(0,255,136,0.6)' }].forEach(({ trace, color }) => {
+            if (trace.length < 2) return;
+            for (let i = 1; i < trace.length; i++) {
+                const alpha = Math.max(0.1, 1 - (sim.time - trace[i].t)/TRACE_DURATION);
+                const ll0 = metersToLatLon(trace[i-1].x, trace[i-1].y);
+                const ll1 = metersToLatLon(trace[i].x, trace[i].y);
+                const p0 = toPixel(ll0.lat, ll0.lon), p1 = toPixel(ll1.lat, ll1.lon);
+                ctxMap.strokeStyle = color.replace(/[\d.]+\)$/, (alpha*0.8).toFixed(2)+')');
+                ctxMap.lineWidth = 3;
+                ctxMap.beginPath(); ctxMap.moveTo(p0.x, p0.y); ctxMap.lineTo(p1.x, p1.y); ctxMap.stroke();
+            }
+        });
+        
+        // Position réelle
+        if (!sim.fireControl.droneDestroyed) {
+            const droneLL = metersToLatLon(sim.drone.x, sim.drone.y);
+            const dp = toPixel(droneLL.lat, droneLL.lon);
+            ctxMap.fillStyle = 'rgba(255,59,59,0.3)';
+            ctxMap.beginPath(); ctxMap.arc(dp.x, dp.y, 10, 0, 2*Math.PI); ctxMap.fill();
+            ctxMap.fillStyle = '#ff3b3b';
+            ctxMap.beginPath(); ctxMap.arc(dp.x, dp.y, 5, 0, 2*Math.PI); ctxMap.fill();
+        }
+        
+        // Position estimée
+        const e = sim.est;
+        const estX = e.distance*Math.cos(e.azimuth)*Math.cos(e.elevation);
+        const estY = e.distance*Math.sin(e.azimuth)*Math.cos(e.elevation);
+        const estLL = metersToLatLon(estX, estY);
+        const ep = toPixel(estLL.lat, estLL.lon);
+        
+        ctxMap.fillStyle = 'rgba(0,255,136,0.3)';
+        ctxMap.beginPath(); ctxMap.arc(ep.x, ep.y, 10, 0, 2*Math.PI); ctxMap.fill();
+        ctxMap.fillStyle = '#00ff88';
+        ctxMap.beginPath(); ctxMap.arc(ep.x, ep.y, 5, 0, 2*Math.PI); ctxMap.fill();
+    }
+    
+    function drawSide() {
+        const w = canvasSide.width, h = canvasSide.height;
+        const cx = w/2, cy = h*0.85;
+        const scale = Math.min(w, h*0.75) / (BUBBLE_RADIUS*2.4);
+        
+        ctxSide.fillStyle = '#0a0e14';
+        ctxSide.fillRect(0, 0, w, h);
+        
+        // Sol
+        ctxSide.strokeStyle = 'rgba(0,212,255,0.3)';
+        ctxSide.lineWidth = 1;
+        ctxSide.beginPath(); ctxSide.moveTo(0, cy); ctxSide.lineTo(w, cy); ctxSide.stroke();
+        
+        // Handover zone
+        ctxSide.strokeStyle = 'rgba(255,0,255,0.3)';
+        ctxSide.setLineDash([3,3]);
+        ctxSide.beginPath();
+        ctxSide.moveTo(cx - HANDOVER_DISTANCE*scale, cy);
+        ctxSide.lineTo(cx - HANDOVER_DISTANCE*scale, cy - 80*scale);
+        ctxSide.moveTo(cx + HANDOVER_DISTANCE*scale, cy);
+        ctxSide.lineTo(cx + HANDOVER_DISTANCE*scale, cy - 80*scale);
+        ctxSide.stroke();
+        ctxSide.setLineDash([]);
+        
+        // Capteur
+        ctxSide.fillStyle = '#8b5cf6';
+        ctxSide.beginPath(); ctxSide.arc(cx, cy, 4, 0, 2*Math.PI); ctxSide.fill();
+        
+        // Traces
+        [{ trace: sim.traceReal, color: '#ff3b3b' }, { trace: sim.traceEst, color: '#00ff88' }].forEach(({ trace, color }) => {
+            if (trace.length < 2) return;
+            for (let i = 1; i < trace.length; i++) {
+                const alpha = Math.max(0.1, 1 - (sim.time - trace[i].t)/TRACE_DURATION);
+                ctxSide.strokeStyle = hexToRgba(color, alpha*0.6);
+                ctxSide.lineWidth = 2;
+                ctxSide.beginPath();
+                ctxSide.moveTo(cx + trace[i-1].x*scale, cy - trace[i-1].z*scale);
+                ctxSide.lineTo(cx + trace[i].x*scale, cy - trace[i].z*scale);
+                ctxSide.stroke();
+            }
+        });
+        
+        // Positions
+        if (!sim.fireControl.droneDestroyed) {
+            ctxSide.fillStyle = '#ff3b3b';
+            ctxSide.beginPath(); ctxSide.arc(cx + sim.drone.x*scale, cy - sim.drone.z*scale, 4, 0, 2*Math.PI); ctxSide.fill();
+        }
+        
+        const e = sim.est;
+        ctxSide.fillStyle = '#00ff88';
+        ctxSide.beginPath(); ctxSide.arc(cx + e.distance*Math.cos(e.azimuth)*scale, cy - e.distance*Math.sin(e.elevation)*scale, 4, 0, 2*Math.PI); ctxSide.fill();
+    }
+    
+    function drawCamera() {
+        const w = canvasCamera.width, h = canvasCamera.height;
+        const cx = w/2, cy = h/2;
+        const fc = sim.fireControl;
+        
+        ctxCamera.fillStyle = fc.mode === 'camera' ? '#0a0a14' : '#050508';
+        ctxCamera.fillRect(0, 0, w, h);
+        
+        const panel = document.getElementById('cameraPanel');
+        const label = panel.querySelector('.view-label');
+        
+        if (fc.mode !== 'camera') {
+            label.textContent = 'CAMÉRA TIR - STANDBY';
+            panel.classList.remove('camera-active');
+            ctxCamera.fillStyle = '#1a1a24';
+            ctxCamera.font = '12px Arial Black';
+            ctxCamera.textAlign = 'center';
+            ctxCamera.fillText('ATTENTE HANDOVER', cx, cy);
+            ctxCamera.font = '9px Courier New';
+            ctxCamera.fillStyle = '#8b949e';
+            ctxCamera.fillText(`Dist: ${sim.est.distance.toFixed(0)}m > ${HANDOVER_DISTANCE}m`, cx, cy + 18);
+            return;
+        }
+        
+        panel.classList.add('camera-active');
+        
+        if (fc.droneDestroyed) {
+            label.textContent = 'CAMÉRA - KILL CONFIRMED';
+            ctxCamera.fillStyle = '#00ff88';
+            ctxCamera.font = 'bold 16px Arial Black';
+            ctxCamera.textAlign = 'center';
+            ctxCamera.fillText('TARGET DOWN', cx, cy - 10);
+            ctxCamera.font = '10px Courier New';
+            ctxCamera.fillText(`Respawn: ${(RESPAWN_DELAY - fc.respawnTimer).toFixed(1)}s`, cx, cy + 15);
+            return;
+        }
+        
+        label.textContent = fc.lockOn ? 'CAMÉRA - LOCK ON' : (fc.visualContact ? 'CAMÉRA - TRACKING' : 'CAMÉRA - ACQUISITION');
+        
+        // Grille
+        ctxCamera.strokeStyle = 'rgba(0,212,255,0.08)';
+        ctxCamera.lineWidth = 1;
+        for (let i = 0; i < w; i += 25) { ctxCamera.beginPath(); ctxCamera.moveTo(i, 0); ctxCamera.lineTo(i, h); ctxCamera.stroke(); }
+        for (let i = 0; i < h; i += 25) { ctxCamera.beginPath(); ctxCamera.moveTo(0, i); ctxCamera.lineTo(w, i); ctxCamera.stroke(); }
+        
+        // Position du drone RÉEL dans le FOV
+        const realDist = magnitude(sim.drone);
+        const realAz = Math.atan2(sim.drone.y, sim.drone.x);
+        const realEl = Math.asin(sim.drone.z / realDist);
+        
+        let azOff = realAz - fc.cameraAz;
+        if (azOff > Math.PI) azOff -= 2*Math.PI;
+        if (azOff < -Math.PI) azOff += 2*Math.PI;
+        const elOff = realEl - fc.cameraEl;
+        
+        const fovScale = Math.min(w, h) / (Math.PI/6);
+        const droneScreenX = cx + azOff * fovScale;
+        const droneScreenY = cy - elOff * fovScale;
+        
+        if (Math.abs(azOff) < Math.PI/6 && Math.abs(elOff) < Math.PI/6) {
+            const size = Math.max(8, 25 - realDist/6);
+            
+            ctxCamera.strokeStyle = fc.lockOn ? '#ff00ff' : '#ff3b3b';
+            ctxCamera.lineWidth = 2;
+            ctxCamera.beginPath();
+            ctxCamera.moveTo(droneScreenX - size, droneScreenY);
+            ctxCamera.lineTo(droneScreenX + size, droneScreenY);
+            ctxCamera.moveTo(droneScreenX, droneScreenY - size/2);
+            ctxCamera.lineTo(droneScreenX, droneScreenY + size/2);
+            ctxCamera.stroke();
+            
+            ctxCamera.strokeStyle = fc.lockOn ? '#ff00ff' : '#ffff00';
+            ctxCamera.lineWidth = fc.lockOn ? 2 : 1;
+            ctxCamera.strokeRect(droneScreenX - size - 4, droneScreenY - size - 4, (size+4)*2, (size+4)*2);
+            
+            ctxCamera.fillStyle = '#00d4ff';
+            ctxCamera.font = '9px Courier New';
+            ctxCamera.textAlign = 'center';
+            ctxCamera.fillText(`${realDist.toFixed(0)}m`, droneScreenX, droneScreenY + size + 12);
+        }
+    }
+    
+    function drawReticle() {
+        const w = canvasReticle.width, h = canvasReticle.height;
+        const cx = w/2, cy = h/2;
+        const fc = sim.fireControl;
+        
+        ctxReticle.fillStyle = '#050508';
+        ctxReticle.fillRect(0, 0, w, h);
+        
+        const panel = document.getElementById('reticlePanel');
+        const label = panel.querySelector('.view-label');
+        
+        if (fc.droneDestroyed) {
+            label.textContent = 'VISEUR - NEUTRALISÉ';
+            ctxReticle.fillStyle = '#00ff88';
+            ctxReticle.font = 'bold 14px Arial Black';
+            ctxReticle.textAlign = 'center';
+            ctxReticle.fillText('KILL', cx, cy);
+            return;
+        }
+        
+        if (fc.mode !== 'camera') {
+            label.textContent = 'VISEUR - STANDBY';
+            ctxReticle.fillStyle = '#1a1a24';
+            ctxReticle.font = '11px Courier New';
+            ctxReticle.textAlign = 'center';
+            ctxReticle.fillText('KHÉOPS ACTIF', cx, cy);
+            return;
+        }
+        
+        label.textContent = fc.lockOn ? 'VISEUR - FIRE' : 'VISEUR - ACQ';
+        
+        const color = fc.lockOn ? '#ff00ff' : (fc.targetCentered ? '#ffff00' : '#00d4ff');
+        
+        ctxReticle.strokeStyle = color;
+        ctxReticle.lineWidth = 1;
+        [15, 30, 45].forEach(r => {
+            ctxReticle.beginPath();
+            ctxReticle.arc(cx, cy, r, 0, 2*Math.PI);
+            ctxReticle.stroke();
+        });
+        
+        ctxReticle.lineWidth = 2;
+        ctxReticle.beginPath();
+        ctxReticle.moveTo(cx - 60, cy); ctxReticle.lineTo(cx - 20, cy);
+        ctxReticle.moveTo(cx + 20, cy); ctxReticle.lineTo(cx + 60, cy);
+        ctxReticle.moveTo(cx, cy - 60); ctxReticle.lineTo(cx, cy - 20);
+        ctxReticle.moveTo(cx, cy + 20); ctxReticle.lineTo(cx, cy + 60);
+        ctxReticle.stroke();
+        
+        if (fc.lockOn) {
+            ctxReticle.fillStyle = '#ff00ff';
+            ctxReticle.beginPath();
+            ctxReticle.arc(cx, cy, 4, 0, 2*Math.PI);
+            ctxReticle.fill();
+        }
+        
+        ctxReticle.fillStyle = color;
+        ctxReticle.font = '8px Courier New';
+        ctxReticle.textAlign = 'left';
+        ctxReticle.fillText(`DST: ${sim.est.distance.toFixed(0)}m`, 4, 12);
+        ctxReticle.textAlign = 'right';
+        ctxReticle.fillText(`TIRS: ${fc.shotsFired}`, w-4, 12);
+        
+        ctxReticle.textAlign = 'center';
+        ctxReticle.font = 'bold 9px Arial Black';
+        ctxReticle.fillText(fc.lockOn ? '🔥 FIRE' : 'TRACKING', cx, h - 8);
+    }
+    
+    // ============================================================
+    // UI
+    // ============================================================
+    function updateUI() {
+        const d = sim.drone, e = sim.est, fc = sim.fireControl;
+        
+        const realDist = magnitude(d);
+        const toRx = normalize({ x: -d.x, y: -d.y, z: -d.z });
+        const realVr = dot({ x: d.vx, y: d.vy, z: d.vz }, toRx);
+        
+        const distErr = Math.abs(realDist - e.distance);
+        const distErrPct = realDist > 0 ? distErr / realDist * 100 : 0;
+        
+        const estX = e.distance * Math.cos(e.azimuth) * Math.cos(e.elevation);
+        const estY = e.distance * Math.sin(e.azimuth) * Math.cos(e.elevation);
+        const estZ = e.distance * Math.sin(e.elevation);
+        const estGPS = metersToLatLon(estX, estY);
+        
+        document.getElementById('simTime').textContent = sim.time.toFixed(2);
+        
+        document.getElementById('fireLat').textContent = estGPS.lat.toFixed(6);
+        document.getElementById('fireLon').textContent = estGPS.lon.toFixed(6);
+        document.getElementById('fireAlt').textContent = estZ.toFixed(1);
+        document.getElementById('fireDist').textContent = e.distance.toFixed(1);
+        
+        document.getElementById('realDistance').textContent = realDist.toFixed(1);
+        document.getElementById('estDistance').textContent = e.distance.toFixed(1);
+        document.getElementById('distanceError').textContent = distErr.toFixed(1);
+        document.getElementById('distanceErrorPct').textContent = distErrPct.toFixed(1);
+        
+        // Erreur Position 3D (distance euclidienne entre position estimée et réelle)
+        const posErr3D = Math.sqrt((e.x - d.x)**2 + (e.y - d.y)**2 + (e.z - d.z)**2);
+        document.getElementById('posError3D').textContent = posErr3D.toFixed(2);
+        
+        // Doppler UI
+        const vRadEl = document.getElementById('vRadialValue');
+        vRadEl.innerHTML = `<span style="color: ${e.dopplerIntegrating ? 'var(--accent-green)' : 'var(--accent-red)'}">${e.radialVelocity.toFixed(2)}</span><span class="unit">m/s</span>`;
+        
+        document.getElementById('integrationStatus').innerHTML = e.dopplerIntegrating ? 
+            '<span style="color: var(--accent-green)">ACTIVE</span>' : 
+            '<span style="color: var(--accent-red)">PAUSE</span>';
+        
+        document.getElementById('soundSpeedDisplay').textContent = SPEED_OF_SOUND.toFixed(1);
+        
+        document.getElementById('dopplerLabel').textContent = e.radialVelocity.toFixed(1) + ' m/s';
+        
+        // Barre Doppler
+        const dopplerFill = document.getElementById('dopplerFill');
+        const maxVr = 20;
+        const normalizedVr = (e.radialVelocity + maxVr) / (2 * maxVr); // 0-1
+        const fillWidth = Math.max(0, Math.min(100, normalizedVr * 100));
+        dopplerFill.style.width = fillWidth + '%';
+        dopplerFill.style.background = e.radialVelocity > 0 ? 'var(--accent-green)' : 'var(--accent-cyan)';
+        dopplerFill.style.marginLeft = e.radialVelocity > 0 ? '50%' : (fillWidth) + '%';
+        dopplerFill.style.width = Math.abs(e.radialVelocity) / maxVr * 50 + '%';
+        
+        // Handover
+        document.getElementById('hoverKheops').classList.toggle('active', fc.mode === 'kheops');
+        document.getElementById('hoverCamera').classList.toggle('active', fc.mode === 'camera');
+        
+        // Stats
+        document.getElementById('killCount').textContent = sim.stats.totalKills;
+        document.getElementById('totalShots').textContent = sim.stats.totalShots;
+        const acc = sim.stats.totalShots > 0 ? (sim.stats.totalKills / sim.stats.totalShots * 100).toFixed(0) : '--';
+        document.getElementById('accuracy').textContent = acc + '%';
+        
+        // Fire assessment
+        const fa = document.getElementById('fireAssessment');
+        
+        if (fc.droneDestroyed) {
+            fa.className = 'fire-assessment fire-go';
+            fa.innerHTML = `<div class="fire-status">NEUTRALISÉ</div><div class="fire-details">Respawn: ${(RESPAWN_DELAY - fc.respawnTimer).toFixed(1)}s</div>`;
+        } else if (fc.mode === 'camera' && fc.lockOn) {
+            fa.className = 'fire-assessment fire-engaged';
+            fa.innerHTML = `<div class="fire-status">🔥 ENGAGED</div><div class="fire-details">Tir auto actif</div>`;
+        } else if (fc.mode === 'camera') {
+            fa.className = 'fire-assessment fire-no-go';
+            fa.innerHTML = `<div class="fire-status">TRACKING</div><div class="fire-details">Acquisition...</div>`;
+        } else {
+            fa.className = 'fire-assessment fire-no-go';
+            fa.innerHTML = `<div class="fire-status">KHÉOPS</div><div class="fire-details">Handover < ${HANDOVER_DISTANCE}m</div>`;
+        }
+        
+        // Status
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        if (fc.droneDestroyed) {
+            statusDot.style.background = '#00ff88';
+            statusText.textContent = 'KILL';
+        } else if (fc.mode === 'camera') {
+            statusDot.style.background = '#ff00ff';
+            statusText.textContent = sim.timeScale < 1 ? 'SLOWMO' : 'CAMERA';
+        } else {
+            statusDot.style.background = '#00ff88';
+            statusText.textContent = 'KHÉOPS';
+        }
+    }
+    
+    // ============================================================
+    // LOOP
+    // ============================================================
+    function step() {
+        if (!sim.running) return;
+        
+        sim.time += BASE_DT * sim.timeScale;
+        updateDrone();
+        updateEstimator();
+        updateFireControl();
+        updateTraces();
+        updateUI();
+        draw();
+        
+        animationId = requestAnimationFrame(step);
+    }
+    
+    // ============================================================
+    // CONTROLS
+    // ============================================================
+    function toggleSimulation() {
+        sim.running = !sim.running;
+        document.getElementById('startBtn').textContent = sim.running ? '⏸ PAUSE' : '▶ START';
+        if (sim.running) step();
+        else if (animationId) cancelAnimationFrame(animationId);
+    }
+    
+    function resetSimulation() {
+        sim.running = false;
+        if (animationId) cancelAnimationFrame(animationId);
+        sim.time = 0;
+        spawnDrone();
+        document.getElementById('startBtn').textContent = '▶ START';
+        document.getElementById('slowmoIndicator').style.display = 'none';
+        if (map) map.setView([rxLat, rxLon], 17);
+        updateUI();
+        draw();
+    }
+    
+    function resetStats() {
+        sim.stats.totalKills = 0;
+        sim.stats.totalShots = 0;
+        updateUI();
+    }
+    
+    function updateHandover(v) {
+        HANDOVER_DISTANCE = parseFloat(v);
+        document.getElementById('handoverDisplay').textContent = v + ' m';
+        // Mettre à jour le cercle violet sur la carte
+        if (handoverCircle) {
+            handoverCircle.setRadius(HANDOVER_DISTANCE);
+        }
+    }
+    
+    function updateSpeed(v) {
+        const newSpeed = parseFloat(v);
+        const d = sim.drone;
+        const curr = magnitude({ x: d.vx, y: d.vy, z: d.vz });
+        if (curr > 0.1) {
+            const f = newSpeed / curr;
+            d.vx *= f; d.vy *= f;
+        }
+        d.speed = newSpeed;
+        document.getElementById('speedDisplay').textContent = v + ' m/s';
+    }
+    
+    function updateSpread(v) {
+        SHOTGUN_SPREAD = parseFloat(v);
+        document.getElementById('spreadDisplay').textContent = v + ' m';
+    }
+    
+    function updateRespawn(v) {
+        RESPAWN_DELAY = parseFloat(v);
+        document.getElementById('respawnDisplay').textContent = v + ' s';
+    }
+    
+    function updateTemperature(v) {
+        TEMPERATURE = parseFloat(v);
+        SPEED_OF_SOUND = calculateSpeedOfSound(TEMPERATURE, HUMIDITY);
+        document.getElementById('tempDisplay').textContent = v + ' °C';
+    }
+    
+    function updateHumidity(v) {
+        HUMIDITY = parseFloat(v);
+        SPEED_OF_SOUND = calculateSpeedOfSound(TEMPERATURE, HUMIDITY);
+        document.getElementById('humidityDisplay').textContent = v + ' %';
+    }
+    
+    window.onload = init;
+    </script>
+</body>
+</html>
