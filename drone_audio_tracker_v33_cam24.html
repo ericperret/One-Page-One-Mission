@@ -1,0 +1,4441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système Khéops v3.3 - Caméra 24/24</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #0f1419;
+            --bg-tertiary: #151c24;
+            --accent-red: #ff3b3b;
+            --accent-green: #00ff88;
+            --accent-cyan: #00d4ff;
+            --accent-yellow: #ffd700;
+            --accent-orange: #ff8c00;
+            --accent-pink: #ff00ff;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --border-color: rgba(0, 212, 255, 0.3);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        
+        body {
+            font-family: 'Courier New', Consolas, monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            grid-template-rows: auto 1fr;
+            gap: 10px;
+            padding: 10px;
+            height: 100vh;
+        }
+        
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 15px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green), var(--accent-cyan));
+        }
+        
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { width: 35px; height: 35px; }
+        
+        h1 {
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .version-tag {
+            font-size: 0.55rem;
+            color: var(--accent-pink);
+            background: rgba(255, 0, 255, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+            border: 1px solid rgba(255, 0, 255, 0.3);
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 4px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-box .value {
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-pink);
+        }
+        
+        .stat-box .label {
+            font-size: 0.5rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--accent-green);
+            border-radius: 12px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-dot {
+            width: 6px; height: 6px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .slowmo-indicator {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 255, 0.9);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            z-index: 9999;
+            display: none;
+            animation: slowmo-pulse 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes slowmo-pulse {
+            0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+            50% { opacity: 0.8; transform: translateX(-50%) scale(1.05); }
+        }
+        
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+        }
+        
+        .views-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 8px;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .view-panel {
+            position: relative;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .view-panel canvas, #map {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        #mapContainer {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        #mapOverlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 500;
+        }
+        
+        .view-label {
+            position: absolute;
+            top: 4px; left: 4px;
+            background: rgba(10, 14, 20, 0.9);
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-size: 0.55rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            z-index: 1000;
+        }
+        
+        .camera-active .view-label {
+            color: var(--accent-pink);
+            border-color: var(--accent-pink);
+            background: rgba(255, 0, 255, 0.2);
+            animation: blink 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .time-display {
+            position: absolute;
+            bottom: 4px; right: 4px;
+            background: rgba(10, 14, 20, 0.9);
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-size: 0.6rem;
+            z-index: 1000;
+        }
+        
+        .time-display span { color: var(--accent-cyan); font-weight: 600; }
+        
+        .controls-row {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 7px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-cyan);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 255, 136, 0.2));
+            border-color: var(--accent-cyan);
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            padding-right: 4px;
+            min-height: 0;
+        }
+        
+        .sidebar::-webkit-scrollbar { width: 5px; }
+        .sidebar::-webkit-scrollbar-track { background: var(--bg-primary); }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        .panel.fire-control {
+            border-color: var(--accent-pink);
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
+        }
+        
+        .panel-header {
+            padding: 6px 8px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .panel.fire-control .panel-header {
+            background: rgba(255, 0, 255, 0.1);
+        }
+        
+        .panel-header h3 {
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--accent-cyan);
+        }
+        
+        .panel.fire-control .panel-header h3 {
+            color: var(--accent-pink);
+        }
+        
+        .panel-icon {
+            width: 12px; height: 12px;
+            color: var(--accent-cyan);
+        }
+        
+        .panel.fire-control .panel-icon {
+            color: var(--accent-pink);
+        }
+        
+        .panel-content { padding: 8px; }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+        
+        .data-item {
+            background: var(--bg-tertiary);
+            padding: 5px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 212, 255, 0.08);
+        }
+        
+        .data-item.full-width { grid-column: 1 / -1; }
+        
+        .data-label {
+            font-size: 0.5rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 1px;
+        }
+        
+        .data-value {
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+        }
+        
+        .data-value .unit {
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        
+        .real-value { color: var(--accent-red); }
+        .estimated-value { color: var(--accent-green); }
+        .error-value { color: var(--accent-yellow); }
+        .fire-value { color: var(--accent-pink); }
+        
+        .fire-assessment {
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .fire-go {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.1));
+            border: 1px solid var(--accent-green);
+        }
+        
+        .fire-no-go {
+            background: linear-gradient(135deg, rgba(255, 59, 59, 0.2), rgba(200, 50, 50, 0.1));
+            border: 1px solid var(--accent-red);
+        }
+        
+        .fire-engaged {
+            background: linear-gradient(135deg, rgba(255, 0, 255, 0.3), rgba(200, 0, 200, 0.1));
+            border: 2px solid var(--accent-pink);
+            animation: fire-pulse 0.3s ease-in-out infinite;
+        }
+        
+        @keyframes fire-pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 0, 255, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(255, 0, 255, 0.8); }
+        }
+        
+        .fire-status {
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 3px;
+        }
+        
+        .fire-go .fire-status { color: var(--accent-green); }
+        .fire-no-go .fire-status { color: var(--accent-red); }
+        .fire-engaged .fire-status { color: var(--accent-pink); }
+        
+        .fire-details { font-size: 0.55rem; color: var(--text-secondary); }
+        
+        .slider-container { margin: 5px 0; }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.55rem;
+            margin-bottom: 2px;
+        }
+        
+        .slider-label span:first-child { color: var(--text-secondary); }
+        .slider-label span:last-child { color: var(--accent-cyan); font-weight: 600; }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px; height: 10px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .handover-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        
+        .handover-box {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .handover-kheops {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        
+        .handover-kheops.active {
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        
+        .handover-camera {
+            background: rgba(255, 0, 255, 0.2);
+            border: 1px solid var(--accent-pink);
+            color: var(--accent-pink);
+        }
+        
+        .handover-camera.active {
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+            animation: blink 0.5s ease-in-out infinite;
+        }
+        
+        .handover-arrow {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+        
+        .doppler-indicator {
+            margin-top: 8px;
+            padding: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 0.55rem;
+        }
+        
+        .doppler-bar {
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .doppler-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: all 0.1s;
+        }
+        
+        .doppler-deadzone {
+            position: absolute;
+            top: 0;
+            left: 45%;
+            width: 10%;
+            height: 100%;
+            background: rgba(255, 59, 59, 0.3);
+            border-left: 1px solid var(--accent-red);
+            border-right: 1px solid var(--accent-red);
+        }
+        
+        /* Leaflet */
+        .leaflet-container { background: var(--bg-primary) !important; }
+        .leaflet-control-zoom { border: 1px solid var(--border-color) !important; border-radius: 4px !important; }
+        .leaflet-control-zoom a {
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            width: 24px !important; height: 24px !important;
+            line-height: 24px !important; font-size: 12px !important;
+        }
+        .leaflet-control-attribution { display: none; }
+    </style>
+</head>
+<body>
+    <div class="slowmo-indicator" id="slowmoIndicator">⏱️ SLOW-MO x0.3</div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 50 50" fill="none">
+                        <polygon points="25,5 45,40 5,40" stroke="url(#grad)" stroke-width="2" fill="none"/>
+                        <circle cx="25" cy="28" r="4" fill="#00d4ff"/>
+                        <circle cx="15" cy="38" r="3" fill="#00ff88"/>
+                        <circle cx="35" cy="38" r="3" fill="#00ff88"/>
+                        <defs>
+                            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#00d4ff"/>
+                                <stop offset="100%" style="stop-color:#00ff88"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div>
+                    <h1>KHÉOPS <span class="version-tag">v3.3 CAM24</span></h1>
+                    <div style="font-size: 0.5rem; color: var(--text-secondary);">
+                        Propagation Acoustique - Bulle Dynamique
+                    </div>
+                </div>
+            </div>
+            
+            <div class="header-stats">
+                <div class="stat-box">
+                    <div class="value" id="killCount">0</div>
+                    <div class="label">Kills</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="totalShots">0</div>
+                    <div class="label">Tirs</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="accuracy">--%</div>
+                    <div class="label">Précision</div>
+                </div>
+            </div>
+            
+            <div class="status-badge">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">PRÊT</span>
+            </div>
+        </header>
+        
+        <div class="main-area">
+            <div class="views-container">
+                <div class="view-panel">
+                    <div class="view-label">KHÉOPS - VUE DESSUS</div>
+                    <div id="mapContainer">
+                        <div id="map"></div>
+                        <canvas id="mapOverlay"></canvas>
+                    </div>
+                </div>
+                
+                <div class="view-panel">
+                    <div class="view-label">VUE LATÉRALE</div>
+                    <canvas id="canvasSide"></canvas>
+                    <div class="time-display">T+ <span id="simTime">0.00</span>s</div>
+                </div>
+                
+                <div class="view-panel" id="cameraPanel">
+                    <div class="view-label">CAMÉRA TIR - STANDBY</div>
+                    <canvas id="canvasCamera"></canvas>
+                </div>
+                
+                <div class="view-panel" id="reticlePanel">
+                    <div class="view-label">VISEUR - STANDBY</div>
+                    <canvas id="canvasReticle"></canvas>
+                </div>
+            </div>
+            
+            <div class="controls-row">
+                <button class="btn btn-primary" id="startBtn" onclick="toggleSimulation()">▶ START</button>
+                <button class="btn" onclick="resetSimulation()">⟲ RESET</button>
+                <button class="btn" onclick="resetStats()">📊 RESET STATS</button>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <!-- CONDUITE DE TIR -->
+            <div class="panel fire-control">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <h3>CONDUITE DE TIR</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="handover-indicator">
+                        <div class="handover-box handover-kheops active" id="hoverKheops">KHÉOPS</div>
+                        <div class="handover-arrow">→</div>
+                        <div class="handover-box handover-camera" id="hoverCamera">CAMÉRA</div>
+                    </div>
+                    
+                    <div id="fireAssessment" class="fire-assessment fire-no-go">
+                        <div class="fire-status">STANDBY</div>
+                        <div class="fire-details">En attente</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CIBLE ESTIMÉE -->
+            <div class="panel fire-control">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+                    </svg>
+                    <h3>CIBLE ESTIMÉE</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <div class="data-label">Latitude</div>
+                            <div class="data-value fire-value"><span id="fireLat">--</span><span class="unit">°N</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Longitude</div>
+                            <div class="data-value fire-value"><span id="fireLon">--</span><span class="unit">°E</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Altitude</div>
+                            <div class="data-value fire-value"><span id="fireAlt">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Distance</div>
+                            <div class="data-value fire-value"><span id="fireDist">--</span><span class="unit">m</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- DOPPLER STATUS -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                    <h3>DOPPLER</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <div class="data-label">V. Radiale</div>
+                            <div class="data-value" id="vRadialValue"><span>--</span><span class="unit">m/s</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Intégration</div>
+                            <div class="data-value" id="integrationStatus"><span>--</span></div>
+                        </div>
+                        <div class="data-item full-width">
+                            <div class="data-label">Vitesse du Son</div>
+                            <div class="data-value" style="color: var(--accent-cyan);"><span id="soundSpeedDisplay">343.0</span><span class="unit">m/s</span></div>
+                        </div>
+                    </div>
+                    <div class="doppler-indicator">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Éloignement</span>
+                            <span id="dopplerLabel">0 m/s</span>
+                            <span>Approche</span>
+                        </div>
+                        <div class="doppler-bar">
+                            <div class="doppler-deadzone"></div>
+                            <div class="doppler-fill" id="dopplerFill"></div>
+                        </div>
+                        <div style="text-align: center; margin-top: 4px; color: var(--accent-red); font-size: 0.5rem;">
+                            Zone morte ±2 m/s (pas d'intégration)
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ISO 9613-1 DIAGNOSTICS -->
+            <div class="panel" style="border-color: rgba(255, 215, 0, 0.4);">
+                <div class="panel-header" style="background: linear-gradient(90deg, rgba(255, 215, 0, 0.1), transparent);">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                    </svg>
+                    <h3 style="color: #ffd700;">ISO 9613-1</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">P<sub>sat</sub> (Magnus)</div>
+                            <div class="data-value" style="font-size: 0.65rem;"><span id="isoPsat">--</span><span class="unit">Pa</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">f (Enhancement)</div>
+                            <div class="data-value" style="font-size: 0.65rem;"><span id="isoEnhancement">--</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">x<sub>H₂O</sub> (mol)</div>
+                            <div class="data-value" style="font-size: 0.65rem;"><span id="isoXw">--</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">x<sub>CO₂</sub> (mol)</div>
+                            <div class="data-value" style="font-size: 0.65rem;"><span id="isoXc">--</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">M<sub>mix</sub></div>
+                            <div class="data-value" style="font-size: 0.65rem;"><span id="isoM">--</span><span class="unit">g/mol</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">γ (Cp/Cv)</div>
+                            <div class="data-value" style="font-size: 0.65rem;"><span id="isoGamma">--</span></div>
+                        </div>
+                        <div class="data-item full-width" style="border-top: 1px solid rgba(255, 215, 0, 0.2); padding-top: 4px; margin-top: 2px;">
+                            <div class="data-label" style="font-size: 0.45rem;">c<sub>ISO</sub> vs c<sub>Cramer</sub></div>
+                            <div class="data-value" style="font-size: 0.65rem; color: var(--accent-green);"><span id="isoComparison">--</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- VENT (PERTURBATEUR) -->
+            <div class="panel" style="border-color: rgba(0, 191, 255, 0.5);">
+                <div class="panel-header" style="background: linear-gradient(90deg, rgba(0, 191, 255, 0.15), transparent);">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="#00bfff" stroke-width="2">
+                        <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
+                    </svg>
+                    <h3 style="color: #00bfff;">VENT</h3>
+                    <label style="margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 0.5rem;">
+                        <input type="checkbox" id="windEnabled" checked onchange="toggleWind(this.checked)">
+                        <span>Actif</span>
+                    </label>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">Vitesse</div>
+                            <div class="data-value" style="font-size: 0.7rem;"><span id="windSpeed">--</span><span class="unit">km/h</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">Direction</div>
+                            <div class="data-value" style="font-size: 0.7rem;"><span id="windDirection">--</span><span class="unit">°</span></div>
+                        </div>
+                        <div class="data-item full-width">
+                            <div class="data-label" style="font-size: 0.45rem;">Status</div>
+                            <div class="data-value" id="windStatus" style="font-size: 0.65rem;">--</div>
+                        </div>
+                    </div>
+                    <!-- Rose des vents mini -->
+                    <div style="display: flex; align-items: center; justify-content: center; margin-top: 6px;">
+                        <canvas id="windRose" width="60" height="60" style="border-radius: 50%; background: rgba(0,0,0,0.3);"></canvas>
+                    </div>
+                    <div class="slider-container" style="margin-top: 6px;">
+                        <div class="slider-label">
+                            <span>Vitesse Base</span>
+                            <span id="windBaseDisplay">20 km/h</span>
+                        </div>
+                        <input type="range" min="10" max="70" step="5" value="20" oninput="updateWindBase(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Direction Base</span>
+                            <span id="windDirDisplay">45°</span>
+                        </div>
+                        <input type="range" min="0" max="360" step="15" value="45" oninput="updateWindDirection(this.value)">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- COHÉRENCE GÉOMÉTRIQUE -->
+            <div class="panel" style="border-color: rgba(255, 140, 0, 0.5);">
+                <div class="panel-header" style="background: linear-gradient(90deg, rgba(255, 140, 0, 0.15), transparent);">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="#ff8c00" stroke-width="2">
+                        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/>
+                    </svg>
+                    <h3 style="color: #ff8c00;">COHÉRENCE</h3>
+                    <label style="margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 0.5rem;">
+                        <input type="checkbox" id="coherenceEnabled" checked onchange="toggleCoherence(this.checked)">
+                        <span>Filtrage</span>
+                    </label>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">Indice</div>
+                            <div class="data-value" style="font-size: 0.8rem;"><span id="coherenceIndex">--</span><span class="unit">%</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">Dispersion</div>
+                            <div class="data-value" style="font-size: 0.7rem;"><span id="coherenceDispersion">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item full-width">
+                            <div class="data-label" style="font-size: 0.45rem;">Solutions Valides</div>
+                            <div class="data-value" style="font-size: 0.65rem;"><span id="coherenceSolutions">--</span><span class="unit">/ 210</span></div>
+                        </div>
+                    </div>
+                    <!-- Barre de cohérence -->
+                    <div style="margin-top: 6px;">
+                        <div style="height: 8px; background: var(--bg-primary); border-radius: 4px; overflow: hidden;">
+                            <div id="coherenceBar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #ff3b3b, #ffd700, #00ff88); transition: width 0.2s;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.45rem; color: var(--text-secondary); margin-top: 2px;">
+                            <span>RAFALE</span>
+                            <span>STABLE</span>
+                        </div>
+                    </div>
+                    <!-- Alerte rafale -->
+                    <div id="gustAlert" style="display: none; margin-top: 6px; padding: 4px 8px; background: rgba(255, 59, 59, 0.2); border: 1px solid var(--accent-red); border-radius: 4px; text-align: center;">
+                        <span style="color: var(--accent-red); font-size: 0.6rem; font-weight: bold;">⚠️ RAFALE DÉTECTÉE</span>
+                    </div>
+                    <!-- Alerte Zone Zénithale -->
+                    <div id="zenithAlert" style="display: none; margin-top: 6px; padding: 4px 8px; background: rgba(255, 215, 0, 0.2); border: 1px solid var(--accent-yellow); border-radius: 4px; text-align: center;">
+                        <span style="color: var(--accent-yellow); font-size: 0.6rem; font-weight: bold;">📍 ZONE ZÉNITHALE - Correction active</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ACOUSTIQUE -->
+            <div class="panel" style="border-color: rgba(138, 43, 226, 0.5);">
+                <div class="panel-header" style="background: linear-gradient(90deg, rgba(138, 43, 226, 0.15), transparent);">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="#8a2be2" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    </svg>
+                    <h3 style="color: #8a2be2;">ACOUSTIQUE</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">SNR</div>
+                            <div class="data-value" style="font-size: 0.8rem;"><span id="snrValue">--</span><span class="unit">dB</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">Niveau Reçu</div>
+                            <div class="data-value" style="font-size: 0.7rem;"><span id="receivedLevel">--</span><span class="unit">dB</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">Bruit Fond</div>
+                            <div class="data-value" style="font-size: 0.7rem;"><span id="backgroundNoise">35</span><span class="unit">dB</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label" style="font-size: 0.45rem;">Portée Max</div>
+                            <div class="data-value" style="font-size: 0.7rem;"><span id="maxRange">--</span><span class="unit">m</span></div>
+                        </div>
+                    </div>
+                    <!-- Barre SNR -->
+                    <div style="margin-top: 6px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.4rem; color: var(--text-secondary); margin-bottom: 2px;">
+                            <span>INAUDIBLE</span>
+                            <span>CLAIR</span>
+                        </div>
+                        <div style="height: 8px; background: var(--bg-primary); border-radius: 4px; overflow: hidden; position: relative;">
+                            <div style="position: absolute; left: 20%; width: 1px; height: 100%; background: var(--accent-red);"></div>
+                            <div id="snrBar" style="height: 100%; width: 50%; background: linear-gradient(90deg, #8a2be2, #00ff88); transition: width 0.2s;"></div>
+                        </div>
+                    </div>
+                    <!-- Sélecteurs -->
+                    <div class="slider-container" style="margin-top: 8px;">
+                        <div class="slider-label">
+                            <span>Type Drone</span>
+                            <span id="droneTypeDisplay">Consumer</span>
+                        </div>
+                        <select id="droneTypeSelect" onchange="updateDroneType(this.value)" style="width: 100%; padding: 3px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.55rem;">
+                            <option value="mini">Mini (250g) - 74 dB</option>
+                            <option value="consumer" selected>Consumer (600g) - 79 dB</option>
+                            <option value="prosumer">Prosumer (1.2kg) - 83 dB</option>
+                            <option value="pro">Pro (3kg) - 87 dB</option>
+                            <option value="heavy">Lourd (5kg) - 90 dB</option>
+                            <option value="fpv">FPV Racing - 95 dB</option>
+                        </select>
+                    </div>
+                    <div class="slider-container" style="margin-top: 4px;">
+                        <div class="slider-label">
+                            <span>Terrain</span>
+                            <span id="terrainDisplay">Campagne</span>
+                        </div>
+                        <select id="terrainSelect" onchange="updateTerrain(this.value)" style="width: 100%; padding: 3px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.55rem;">
+                            <option value="water">Eau / Lac - 25 dB</option>
+                            <option value="forest">Forêt - 30 dB</option>
+                            <option value="country" selected>Campagne - 35 dB</option>
+                            <option value="suburban">Périurbain - 45 dB</option>
+                            <option value="urban">Urbain - 55 dB</option>
+                            <option value="industrial">Industriel - 60 dB</option>
+                        </select>
+                    </div>
+                    <!-- Alerte Signal Perdu -->
+                    <div id="signalLostAlert" style="display: none; margin-top: 6px; padding: 6px 8px; background: rgba(255, 59, 59, 0.25); border: 2px solid var(--accent-red); border-radius: 4px; text-align: center;">
+                        <div style="color: var(--accent-red); font-size: 0.7rem; font-weight: bold;">📡 SIGNAL PERDU</div>
+                        <div style="color: var(--accent-red); font-size: 0.5rem; margin-top: 2px;">Drone hors portée acoustique</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ERREURS -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+                    </svg>
+                    <h3>PRÉCISION</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <div class="data-label">Err. Pos 3D</div>
+                            <div class="data-value error-value" style="color: var(--accent-orange);"><span id="posError3D">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Err. Distance</div>
+                            <div class="data-value error-value"><span id="distanceError">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Err. %</div>
+                            <div class="data-value error-value"><span id="distanceErrorPct">--</span><span class="unit">%</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Dist. Réelle</div>
+                            <div class="data-value real-value"><span id="realDistance">--</span><span class="unit">m</span></div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Dist. Estimée</div>
+                            <div class="data-value estimated-value"><span id="estDistance">--</span><span class="unit">m</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PARAMÈTRES -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6"/>
+                    </svg>
+                    <h3>PARAMÈTRES</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Seuil Handover</span>
+                            <span id="handoverDisplay">35 m</span>
+                        </div>
+                        <input type="range" min="20" max="60" step="5" value="35" oninput="updateHandover(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Vitesse Drone</span>
+                            <span id="speedDisplay">12 m/s</span>
+                        </div>
+                        <input type="range" min="3" max="25" step="1" value="12" oninput="updateSpeed(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Dispersion Chevrotine</span>
+                            <span id="spreadDisplay">5 m</span>
+                        </div>
+                        <input type="range" min="2" max="10" step="0.5" value="5" oninput="updateSpread(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Délai Respawn</span>
+                            <span id="respawnDisplay">2.0 s</span>
+                        </div>
+                        <input type="range" min="0.5" max="5" step="0.5" value="2" oninput="updateRespawn(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Température</span>
+                            <span id="tempDisplay">20 °C</span>
+                        </div>
+                        <input type="range" min="-20" max="45" step="1" value="20" oninput="updateTemperature(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Humidité</span>
+                            <span id="humidityDisplay">50 %</span>
+                        </div>
+                        <input type="range" min="0" max="100" step="5" value="50" oninput="updateHumidity(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Pression Atmo.</span>
+                            <span id="pressureDisplay">1013.25 hPa</span>
+                        </div>
+                        <input type="range" min="950" max="1050" step="0.5" value="1013.25" oninput="updatePressure(this.value)">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>CO₂</span>
+                            <span id="co2Display">400 ppm</span>
+                        </div>
+                        <input type="range" min="300" max="1000" step="10" value="400" oninput="updateCO2(this.value)">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // CONSTANTES
+    // ============================================================
+    const BUBBLE_RADIUS = 150.0;
+    const TRACE_DURATION = 5.0;
+    const BASE_DT = 0.02;
+    const RX_LAT = 43.2142;
+    const RX_LON = 5.3665;
+    // ============================================================
+    // CONSTANTES GÉODÉSIQUES (WGS84)
+    // ============================================================
+    const WGS84_A = 6378137.0;           // Demi-grand axe (m)
+    const WGS84_B = 6356752.314245;      // Demi-petit axe (m)
+    const WGS84_E2 = 1 - (WGS84_B * WGS84_B) / (WGS84_A * WGS84_A); // Excentricité²
+    
+    // Rayon de courbure méridien (Nord-Sud) à une latitude donnée
+    function radiusMeridian(latRad) {
+        const sinLat = Math.sin(latRad);
+        return WGS84_A * (1 - WGS84_E2) / Math.pow(1 - WGS84_E2 * sinLat * sinLat, 1.5);
+    }
+    
+    // Rayon de courbure premier vertical (Est-Ouest) à une latitude donnée
+    function radiusPrimeVertical(latRad) {
+        const sinLat = Math.sin(latRad);
+        return WGS84_A / Math.sqrt(1 - WGS84_E2 * sinLat * sinLat);
+    }
+    
+    // Mètres par degré de latitude à une latitude donnée
+    function metersPerDegLat(latDeg) {
+        const latRad = latDeg * Math.PI / 180;
+        return radiusMeridian(latRad) * Math.PI / 180;
+    }
+    
+    // Mètres par degré de longitude à une latitude donnée
+    function metersPerDegLon(latDeg) {
+        const latRad = latDeg * Math.PI / 180;
+        return radiusPrimeVertical(latRad) * Math.cos(latRad) * Math.PI / 180;
+    }
+    
+    // Zone morte Doppler - PAS d'intégration si |v_radiale| < seuil
+    const DOPPLER_DEADZONE = 2.0; // m/s
+    
+    // ============================================================
+    // VITESSE DU SON - ISO 9613-1:1993 (COMPLÈTE)
+    // ============================================================
+    // Référence: ISO 9613-1:1993 "Acoustics - Attenuation of sound 
+    // during propagation outdoors - Part 1: Calculation of the 
+    // absorption of sound by the atmosphere"
+    // 
+    // Implémentation state of the art avec TOUS les paramètres:
+    // - Température (°C)
+    // - Humidité relative (%)
+    // - Pression atmosphérique (hPa)
+    // - Fraction molaire de CO₂ (xc)
+    // ============================================================
+    
+    // Paramètres atmosphériques
+    let TEMPERATURE = 20.0;        // °C
+    let HUMIDITY = 50.0;           // % HR
+    let PRESSURE = 1013.25;        // hPa (pression atmosphérique)
+    let CO2_FRACTION = 0.0004;     // Fraction molaire CO₂ (400 ppm standard)
+    
+    // Constantes physiques fondamentales
+    const R_UNIVERSAL = 8.31446261815324;  // J/(mol·K) - Constante des gaz parfaits
+    const M_DRY_AIR = 0.0289652;           // kg/mol - Masse molaire air sec
+    const M_WATER = 0.01801528;            // kg/mol - Masse molaire eau
+    const M_CO2 = 0.04401;                 // kg/mol - Masse molaire CO₂
+    
+    // Constantes thermodynamiques
+    const GAMMA_DRY = 1.4;                 // Rapport Cp/Cv air sec (diatomique)
+    const GAMMA_WATER = 1.33;              // Rapport Cp/Cv vapeur d'eau
+    const GAMMA_CO2 = 1.30;                // Rapport Cp/Cv CO₂
+    
+    // Températures de référence
+    const T_REF = 293.15;                  // K (20°C)
+    const T_TRIPLE = 273.16;               // K (point triple de l'eau)
+    const T_01 = 273.15;                   // K (0°C)
+    
+    // Pression de référence
+    const P_REF = 101325;                  // Pa
+    const P_TRIPLE = 611.657;              // Pa (pression au point triple)
+    
+    /**
+     * Calcul de la pression de vapeur saturante selon ISO 9613-1
+     * Utilise l'équation de Magnus-Tetens améliorée (formule de Sonntag 1990)
+     * Précision: ±0.01% pour -45°C à +60°C
+     * 
+     * @param {number} T - Température en Kelvin
+     * @returns {number} Pression de vapeur saturante en Pa
+     */
+    function saturationVaporPressure_ISO(T) {
+        // Formule de Sonntag (1990) - recommandée par WMO
+        // ln(psat) = -6096.9385/T + 16.635794 - 2.711193e-2*T 
+        //            + 1.673952e-5*T² + 2.433502*ln(T)
+        const lnPsat = -6096.9385 / T 
+                     + 16.635794 
+                     - 2.711193e-2 * T 
+                     + 1.673952e-5 * T * T 
+                     + 2.433502 * Math.log(T);
+        return Math.exp(lnPsat);
+    }
+    
+    /**
+     * Formule alternative de Hyland-Wexler (ASHRAE RP-216)
+     * Utilisée par certains laboratoires de métrologie
+     * Précision: ±0.005% pour 0°C à +100°C
+     * 
+     * @param {number} T - Température en Kelvin
+     * @returns {number} Pression de vapeur saturante en Pa
+     */
+    function saturationVaporPressure_HylandWexler(T) {
+        // Coefficients Hyland-Wexler pour l'eau liquide (T > 273.15 K)
+        const C1 = -5.8002206e3;
+        const C2 = 1.3914993e0;
+        const C3 = -4.8640239e-2;
+        const C4 = 4.1764768e-5;
+        const C5 = -1.4452093e-8;
+        const C6 = 6.5459673e0;
+        
+        const lnPsat = C1/T + C2 + C3*T + C4*T*T + C5*T*T*T + C6*Math.log(T);
+        return Math.exp(lnPsat);
+    }
+    
+    /**
+     * Facteur d'augmentation (enhancement factor) selon ISO 9613-1
+     * Corrige l'écart à l'idéalité du mélange air-vapeur d'eau
+     * 
+     * @param {number} T - Température en Kelvin
+     * @param {number} p - Pression totale en Pa
+     * @returns {number} Facteur d'augmentation (sans dimension, ~1.004)
+     */
+    function enhancementFactor(T, p) {
+        // Formule de Greenspan (1976) simplifiée pour ISO 9613-1
+        // f = 1 + α*p + β*p² où α et β dépendent de T
+        const alpha = 3.14e-8;   // Pa⁻¹
+        const beta = 5.6e-7;     // Pa⁻¹ (terme température)
+        const tC = T - T_01;
+        
+        // Facteur d'augmentation avec correction température
+        const f = 1.00062 + 3.14e-8 * p + 5.6e-7 * tC * tC;
+        return f;
+    }
+    
+    /**
+     * Calcul de la fraction molaire de vapeur d'eau
+     * 
+     * @param {number} hr - Humidité relative (0-100)
+     * @param {number} T - Température en Kelvin
+     * @param {number} p - Pression totale en Pa
+     * @returns {number} Fraction molaire de vapeur d'eau
+     */
+    function molarFractionWater(hr, T, p) {
+        const psat = saturationVaporPressure_ISO(T);
+        const f = enhancementFactor(T, p);
+        const h = (hr / 100) * f * psat / p;
+        return h;
+    }
+    
+    /**
+     * Calcul de la masse molaire du mélange air humide avec CO₂
+     * 
+     * @param {number} xw - Fraction molaire vapeur d'eau
+     * @param {number} xc - Fraction molaire CO₂
+     * @returns {number} Masse molaire en kg/mol
+     */
+    function molarMassMixture(xw, xc) {
+        // Air sec sans CO₂ = N₂ (78.08%) + O₂ (20.95%) + Ar (0.93%)
+        // Masse molaire air sec standard = 28.9652 g/mol
+        const xDryAir = 1 - xw - xc;
+        const M = xDryAir * M_DRY_AIR + xw * M_WATER + xc * M_CO2;
+        return M;
+    }
+    
+    /**
+     * Calcul du rapport des chaleurs spécifiques γ = Cp/Cv
+     * pour le mélange gazeux (air + vapeur + CO₂)
+     * 
+     * @param {number} xw - Fraction molaire vapeur d'eau
+     * @param {number} xc - Fraction molaire CO₂
+     * @returns {number} Rapport γ du mélange
+     */
+    function heatCapacityRatio(xw, xc) {
+        // Moyenne pondérée par les fractions molaires
+        // Cp = Σ(xi * Cp,i) et Cv = Σ(xi * Cv,i)
+        // Pour gaz parfaits: γ ≈ Σ(xi * γi * Cv,i) / Σ(xi * Cv,i)
+        
+        // Capacités calorifiques molaires à volume constant (J/(mol·K))
+        // Cv = R/(γ-1) pour gaz parfait
+        const Cv_dry = R_UNIVERSAL / (GAMMA_DRY - 1);      // Air sec: 20.79
+        const Cv_water = R_UNIVERSAL / (GAMMA_WATER - 1);  // Vapeur: 25.19
+        const Cv_co2 = R_UNIVERSAL / (GAMMA_CO2 - 1);      // CO₂: 27.71
+        
+        const xDry = 1 - xw - xc;
+        
+        // Cv du mélange
+        const Cv_mix = xDry * Cv_dry + xw * Cv_water + xc * Cv_co2;
+        
+        // Cp du mélange (Cp = Cv + R pour gaz parfait)
+        const Cp_mix = Cv_mix + R_UNIVERSAL;
+        
+        return Cp_mix / Cv_mix;
+    }
+    
+    /**
+     * FONCTION PRINCIPALE: Vitesse du son selon ISO 9613-1
+     * 
+     * Formule fondamentale: c = √(γ·R·T/M)
+     * 
+     * où:
+     * - γ = rapport des chaleurs spécifiques du mélange
+     * - R = constante universelle des gaz parfaits
+     * - T = température absolue (K)
+     * - M = masse molaire du mélange (kg/mol)
+     * 
+     * @param {number} tempC - Température en °C
+     * @param {number} humidityPct - Humidité relative en %
+     * @param {number} pressureHPa - Pression atmosphérique en hPa
+     * @param {number} xCO2 - Fraction molaire de CO₂ (défaut 0.0004 = 400 ppm)
+     * @returns {number} Vitesse du son en m/s
+     */
+    function calculateSpeedOfSound_ISO9613(tempC, humidityPct, pressureHPa, xCO2 = 0.0004) {
+        const T = tempC + T_01;           // Conversion en Kelvin
+        const p = pressureHPa * 100;      // Conversion en Pa
+        
+        // Fraction molaire de vapeur d'eau
+        const xw = molarFractionWater(humidityPct, T, p);
+        
+        // Masse molaire du mélange
+        const M = molarMassMixture(xw, xCO2);
+        
+        // Rapport des chaleurs spécifiques
+        const gamma = heatCapacityRatio(xw, xCO2);
+        
+        // Vitesse du son: c = √(γ·R·T/M)
+        const c = Math.sqrt(gamma * R_UNIVERSAL * T / M);
+        
+        return c;
+    }
+    
+    /**
+     * Formule simplifiée de Cramer (1993) pour comparaison
+     * Précision: ~0.1% (référence ISO)
+     */
+    function calculateSpeedOfSound_Cramer(tempC, humidityPct, pressureHPa, xCO2 = 0.0004) {
+        const T = tempC + T_01;
+        const p = pressureHPa * 100;
+        const t = tempC;  // pour lisibilité
+        
+        // Fraction molaire vapeur d'eau
+        const xw = molarFractionWater(humidityPct, T, p);
+        
+        // Formule polynomiale de Cramer (J. Acoust. Soc. Am. 93, 1993)
+        // c = a0 + a1*t + a2*t² + (a3 + a4*t + a5*t²)*xw 
+        //     + (a6 + a7*t + a8*t²)*p + (a9 + a10*t + a11*t²)*xc
+        //     + a12*xw² + a13*p² + a14*xc² + a15*xw*p*xc
+        
+        const a0 = 331.5024;
+        const a1 = 0.603055;
+        const a2 = -0.000528;
+        const a3 = 51.471935;
+        const a4 = 0.1495874;
+        const a5 = -0.000782;
+        const a6 = -1.82e-7;
+        const a7 = 3.73e-8;
+        const a8 = -2.93e-10;
+        const a9 = -85.20931;
+        const a10 = -0.228525;
+        const a11 = 5.91e-5;
+        const a12 = -2.835149;
+        const a13 = -2.15e-13;
+        const a14 = 29.179762;
+        const a15 = 0.000486;
+        
+        const c = a0 + a1*t + a2*t*t 
+                + (a3 + a4*t + a5*t*t) * xw
+                + (a6 + a7*t + a8*t*t) * p
+                + (a9 + a10*t + a11*t*t) * xCO2
+                + a12 * xw * xw
+                + a13 * p * p
+                + a14 * xCO2 * xCO2
+                + a15 * xw * p * xCO2;
+        
+        return c;
+    }
+    
+    /**
+     * Fonction wrapper qui utilise ISO 9613-1 par défaut
+     */
+    function calculateSpeedOfSound(tempC, humidityPct) {
+        return calculateSpeedOfSound_ISO9613(tempC, humidityPct, PRESSURE, CO2_FRACTION);
+    }
+    
+    /**
+     * Calcul détaillé avec retour de tous les paramètres intermédiaires
+     * (pour affichage diagnostic)
+     */
+    function calculateSpeedOfSoundDetailed(tempC, humidityPct, pressureHPa, xCO2) {
+        const T = tempC + T_01;
+        const p = pressureHPa * 100;
+        
+        const psat = saturationVaporPressure_ISO(T);
+        const f = enhancementFactor(T, p);
+        const xw = molarFractionWater(humidityPct, T, p);
+        const M = molarMassMixture(xw, xCO2);
+        const gamma = heatCapacityRatio(xw, xCO2);
+        const c = Math.sqrt(gamma * R_UNIVERSAL * T / M);
+        
+        // Calcul aussi avec Cramer pour comparaison
+        const c_cramer = calculateSpeedOfSound_Cramer(tempC, humidityPct, pressureHPa, xCO2);
+        
+        return {
+            temperature_K: T,
+            pressure_Pa: p,
+            saturationPressure_Pa: psat,
+            enhancementFactor: f,
+            molarFractionH2O: xw,
+            molarFractionCO2: xCO2,
+            molarMass_kgmol: M,
+            gammaRatio: gamma,
+            speedOfSound_ISO: c,
+            speedOfSound_Cramer: c_cramer,
+            deviation_ms: Math.abs(c - c_cramer),
+            deviation_pct: Math.abs(c - c_cramer) / c * 100
+        };
+    }
+    
+    let SPEED_OF_SOUND = calculateSpeedOfSound(TEMPERATURE, HUMIDITY);
+    let HANDOVER_DISTANCE = 35.0;
+    let SHOTGUN_SPREAD = 5.0;
+    let RESPAWN_DELAY = 2.0;
+    
+    // ============================================================
+    // CONSTANTES DE SÉCURITÉ NUMÉRIQUE
+    // ============================================================
+    const EPSILON = 1e-10;          // Protection division par zéro
+    const EPSILON_VELOCITY = 0.001; // Seuil vitesse minimale (m/s)
+    const EPSILON_DISTANCE = 0.01;  // Seuil distance minimale (m)
+    const MAX_DRONE_SPEED = 30;     // Vitesse max physique drone (m/s)
+    const MAX_ALTITUDE = 500;       // Altitude max réaliste (m)
+    const MIN_ALTITUDE = 0.5;       // Altitude min (m)
+    
+    // ============================================================
+    // FILTRE DE KALMAN 3D - Fusion Position/Vitesse
+    // ============================================================
+    // État: [x, y, z, vx, vy, vz] (position + vitesse)
+    // Observation: [x, y, z] (position acoustique)
+    // ============================================================
+    
+    const KALMAN = {
+        enabled: true,
+        
+        // État estimé [x, y, z, vx, vy, vz]
+        state: [80, 0, 40, 0, 0, 0],
+        
+        // Matrice de covariance d'état (6x6)
+        P: null,
+        
+        // Paramètres de bruit
+        processNoise: 2.0,      // Bruit de processus (accélération imprévue) m/s²
+        measurementNoise: 5.0,  // Bruit de mesure acoustique (m)
+        
+        // Historique pour debug
+        innovation: [0, 0, 0],  // Différence mesure - prédiction
+        
+        // Initialisation
+        initialized: false
+    };
+    
+    /**
+     * Initialiser le filtre de Kalman
+     */
+    function kalmanInit() {
+        // État initial
+        KALMAN.state = [80, 0, 40, 0, 0, 0];
+        
+        // Covariance initiale (grande incertitude)
+        KALMAN.P = [
+            [100, 0, 0, 0, 0, 0],
+            [0, 100, 0, 0, 0, 0],
+            [0, 0, 100, 0, 0, 0],
+            [0, 0, 0, 25, 0, 0],
+            [0, 0, 0, 0, 25, 0],
+            [0, 0, 0, 0, 0, 25]
+        ];
+        
+        KALMAN.initialized = true;
+    }
+    
+    /**
+     * Prédiction Kalman (modèle de mouvement)
+     * @param {number} dt - Pas de temps en secondes
+     */
+    function kalmanPredict(dt) {
+        if (!KALMAN.initialized) kalmanInit();
+        
+        const s = KALMAN.state;
+        const q = KALMAN.processNoise;
+        
+        // Prédiction de l'état: x_k = F * x_{k-1}
+        // Modèle à vitesse constante: pos += vel * dt
+        const predictedState = [
+            s[0] + s[3] * dt,  // x += vx * dt
+            s[1] + s[4] * dt,  // y += vy * dt
+            s[2] + s[5] * dt,  // z += vz * dt
+            s[3],              // vx (constant)
+            s[4],              // vy (constant)
+            s[5]               // vz (constant)
+        ];
+        
+        // Matrice de transition F (6x6)
+        // [1 0 0 dt 0  0 ]
+        // [0 1 0 0  dt 0 ]
+        // [0 0 1 0  0  dt]
+        // [0 0 0 1  0  0 ]
+        // [0 0 0 0  1  0 ]
+        // [0 0 0 0  0  1 ]
+        
+        // Prédiction de la covariance: P_k = F * P_{k-1} * F^T + Q
+        const P = KALMAN.P;
+        const dt2 = dt * dt;
+        const dt3 = dt2 * dt / 2;
+        const dt4 = dt2 * dt2 / 4;
+        
+        // Q: bruit de processus (accélération aléatoire)
+        const qdt4 = q * q * dt4;
+        const qdt3 = q * q * dt3;
+        const qdt2 = q * q * dt2;
+        
+        // Mise à jour simplifiée de P (formule exacte pour modèle vitesse constante)
+        const newP = [
+            [P[0][0] + 2*dt*P[0][3] + dt2*P[3][3] + qdt4, P[0][1] + dt*(P[0][4]+P[3][1]) + dt2*P[3][4], P[0][2] + dt*(P[0][5]+P[3][2]) + dt2*P[3][5], P[0][3] + dt*P[3][3] + qdt3, P[0][4] + dt*P[3][4], P[0][5] + dt*P[3][5]],
+            [P[1][0] + dt*(P[1][3]+P[4][0]) + dt2*P[4][3], P[1][1] + 2*dt*P[1][4] + dt2*P[4][4] + qdt4, P[1][2] + dt*(P[1][5]+P[4][2]) + dt2*P[4][5], P[1][3] + dt*P[4][3], P[1][4] + dt*P[4][4] + qdt3, P[1][5] + dt*P[4][5]],
+            [P[2][0] + dt*(P[2][3]+P[5][0]) + dt2*P[5][3], P[2][1] + dt*(P[2][4]+P[5][1]) + dt2*P[5][4], P[2][2] + 2*dt*P[2][5] + dt2*P[5][5] + qdt4, P[2][3] + dt*P[5][3], P[2][4] + dt*P[5][4], P[2][5] + dt*P[5][5] + qdt3],
+            [P[3][0] + dt*P[3][3] + qdt3, P[3][1] + dt*P[3][4], P[3][2] + dt*P[3][5], P[3][3] + qdt2, P[3][4], P[3][5]],
+            [P[4][0] + dt*P[4][3], P[4][1] + dt*P[4][4] + qdt3, P[4][2] + dt*P[4][5], P[4][3], P[4][4] + qdt2, P[4][5]],
+            [P[5][0] + dt*P[5][3], P[5][1] + dt*P[5][4], P[5][2] + dt*P[5][5] + qdt3, P[5][3], P[5][4], P[5][5] + qdt2]
+        ];
+        
+        KALMAN.state = predictedState;
+        KALMAN.P = newP;
+    }
+    
+    /**
+     * Mise à jour Kalman (correction par mesure)
+     * @param {object} measurement - Position mesurée {x, y, z}
+     * @param {number} measurementNoise - Bruit de mesure (optionnel, sinon défaut)
+     */
+    function kalmanUpdate(measurement, measurementNoise = null) {
+        if (!KALMAN.initialized) kalmanInit();
+        
+        const s = KALMAN.state;
+        const P = KALMAN.P;
+        const R = measurementNoise || KALMAN.measurementNoise;
+        const R2 = R * R;
+        
+        // Innovation (résidu): y = z - H * x
+        // H = [1 0 0 0 0 0; 0 1 0 0 0 0; 0 0 1 0 0 0] (on observe x, y, z)
+        const innovation = [
+            measurement.x - s[0],
+            measurement.y - s[1],
+            measurement.z - s[2]
+        ];
+        KALMAN.innovation = innovation;
+        
+        // Covariance de l'innovation: S = H * P * H^T + R
+        // S est 3x3, partie supérieure gauche de P + R*I
+        const S = [
+            [P[0][0] + R2, P[0][1], P[0][2]],
+            [P[1][0], P[1][1] + R2, P[1][2]],
+            [P[2][0], P[2][1], P[2][2] + R2]
+        ];
+        
+        // Inverser S (3x3)
+        const Sinv = invert3x3(S);
+        if (!Sinv) {
+            console.warn('Kalman: matrice S singulière');
+            return;
+        }
+        
+        // Gain de Kalman: K = P * H^T * S^-1
+        // K est 6x3
+        const K = [];
+        for (let i = 0; i < 6; i++) {
+            K[i] = [
+                P[i][0] * Sinv[0][0] + P[i][1] * Sinv[1][0] + P[i][2] * Sinv[2][0],
+                P[i][0] * Sinv[0][1] + P[i][1] * Sinv[1][1] + P[i][2] * Sinv[2][1],
+                P[i][0] * Sinv[0][2] + P[i][1] * Sinv[1][2] + P[i][2] * Sinv[2][2]
+            ];
+        }
+        
+        // Mise à jour de l'état: x = x + K * y
+        const newState = [];
+        for (let i = 0; i < 6; i++) {
+            newState[i] = s[i] + K[i][0] * innovation[0] + K[i][1] * innovation[1] + K[i][2] * innovation[2];
+        }
+        
+        // Mise à jour de la covariance: P = (I - K*H) * P
+        const newP = [];
+        for (let i = 0; i < 6; i++) {
+            newP[i] = [];
+            for (let j = 0; j < 6; j++) {
+                let kh = 0;
+                if (j < 3) kh = K[i][j]; // K*H simplifié car H = [I3 | 0]
+                newP[i][j] = P[i][j] - (j < 3 ? K[i][0]*P[0][j] + K[i][1]*P[1][j] + K[i][2]*P[2][j] : 0);
+            }
+        }
+        
+        // Forcer symétrie et positivité
+        for (let i = 0; i < 6; i++) {
+            for (let j = i+1; j < 6; j++) {
+                newP[i][j] = newP[j][i] = (newP[i][j] + newP[j][i]) / 2;
+            }
+            newP[i][i] = Math.max(newP[i][i], 0.01); // Éviter covariance nulle
+        }
+        
+        KALMAN.state = newState;
+        KALMAN.P = newP;
+    }
+    
+    /**
+     * Obtenir l'état filtré
+     */
+    function kalmanGetState() {
+        return {
+            x: KALMAN.state[0],
+            y: KALMAN.state[1],
+            z: KALMAN.state[2],
+            vx: KALMAN.state[3],
+            vy: KALMAN.state[4],
+            vz: KALMAN.state[5]
+        };
+    }
+    
+    /**
+     * Inversion matrice 3x3
+     */
+    function invert3x3(M) {
+        const det = M[0][0]*(M[1][1]*M[2][2] - M[1][2]*M[2][1])
+                  - M[0][1]*(M[1][0]*M[2][2] - M[1][2]*M[2][0])
+                  + M[0][2]*(M[1][0]*M[2][1] - M[1][1]*M[2][0]);
+        
+        if (Math.abs(det) < EPSILON) return null;
+        
+        const invDet = 1 / det;
+        return [
+            [(M[1][1]*M[2][2] - M[1][2]*M[2][1])*invDet, (M[0][2]*M[2][1] - M[0][1]*M[2][2])*invDet, (M[0][1]*M[1][2] - M[0][2]*M[1][1])*invDet],
+            [(M[1][2]*M[2][0] - M[1][0]*M[2][2])*invDet, (M[0][0]*M[2][2] - M[0][2]*M[2][0])*invDet, (M[0][2]*M[1][0] - M[0][0]*M[1][2])*invDet],
+            [(M[1][0]*M[2][1] - M[1][1]*M[2][0])*invDet, (M[0][1]*M[2][0] - M[0][0]*M[2][1])*invDet, (M[0][0]*M[1][1] - M[0][1]*M[1][0])*invDet]
+        ];
+    }
+    
+    // ============================================================
+    // RANSAC - Élimination des TDOA aberrants
+    // ============================================================
+    // Sélectionne aléatoirement des sous-ensembles de TDOA,
+    // calcule une solution, et élimine les outliers
+    // ============================================================
+    
+    const RANSAC = {
+        enabled: true,
+        iterations: 20,          // Nombre d'itérations RANSAC
+        inlierThreshold: 3.0,    // Distance max pour être inlier (m)
+        minInlierRatio: 0.6,     // Ratio minimum d'inliers requis
+        
+        // Résultats
+        bestInliers: [],
+        outlierSensors: [],      // Indices des capteurs problématiques
+        lastInlierRatio: 1.0
+    };
+    
+    /**
+     * Filtrage RANSAC des TDOA
+     * @param {Array} tdoas - Liste des TDOA
+     * @param {Array} toas - Temps d'arrivée bruts
+     * @returns {object} TDOA filtrés + info outliers
+     */
+    function ransacFilterTDOA(tdoas, toas) {
+        if (!RANSAC.enabled) {
+            return { tdoas: tdoas, toas: toas, outliers: [], inlierRatio: 1.0 };
+        }
+        
+        const n = toas.length; // 5 capteurs
+        let bestSolution = null;
+        let bestInliers = [];
+        let bestInlierCount = 0;
+        
+        // Itérations RANSAC
+        for (let iter = 0; iter < RANSAC.iterations; iter++) {
+            // Sélectionner 4 capteurs aléatoires (minimum pour solution 3D)
+            const indices = [0, 1, 2, 3, 4];
+            shuffleArray(indices);
+            const sampleIndices = indices.slice(0, 4);
+            
+            // Construire TDOA partiel
+            const sampleTDOAs = [];
+            for (let i = 0; i < sampleIndices.length; i++) {
+                for (let j = i + 1; j < sampleIndices.length; j++) {
+                    const si = sampleIndices[i];
+                    const sj = sampleIndices[j];
+                    const tdoa = toas[si] - toas[sj];
+                    sampleTDOAs.push({ i: si, j: sj, value: tdoa });
+                }
+            }
+            
+            // Calculer solution avec ce sous-ensemble
+            try {
+                const solution = locateDroneChanRANSAC(sampleTDOAs);
+                if (!solution || !isFinite(solution.x)) continue;
+                
+                // Compter les inliers (capteurs cohérents avec cette solution)
+                const inliers = [];
+                const expectedTOAs = [];
+                
+                for (let i = 0; i < n; i++) {
+                    const s = SENSORS[i];
+                    const dist = Math.sqrt(
+                        (solution.x - s.x)**2 + 
+                        (solution.y - s.y)**2 + 
+                        (solution.z - s.z)**2
+                    );
+                    expectedTOAs[i] = dist / SPEED_OF_SOUND;
+                }
+                
+                // Vérifier cohérence de chaque TDOA
+                for (const tdoa of tdoas) {
+                    const expectedTDOA = expectedTOAs[tdoa.i] - expectedTOAs[tdoa.j];
+                    const error = Math.abs(tdoa.value - expectedTDOA) * SPEED_OF_SOUND; // Erreur en mètres
+                    
+                    if (error < RANSAC.inlierThreshold) {
+                        inliers.push(tdoa);
+                    }
+                }
+                
+                if (inliers.length > bestInlierCount) {
+                    bestInlierCount = inliers.length;
+                    bestInliers = inliers;
+                    bestSolution = solution;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+        
+        // Identifier les capteurs outliers
+        const outlierSensors = new Set();
+        const allTDOAIndices = new Set(tdoas.map(t => `${t.i}-${t.j}`));
+        const inlierIndices = new Set(bestInliers.map(t => `${t.i}-${t.j}`));
+        
+        for (const tdoa of tdoas) {
+            if (!inlierIndices.has(`${tdoa.i}-${tdoa.j}`)) {
+                outlierSensors.add(tdoa.i);
+                outlierSensors.add(tdoa.j);
+            }
+        }
+        
+        RANSAC.bestInliers = bestInliers;
+        RANSAC.outlierSensors = Array.from(outlierSensors);
+        RANSAC.lastInlierRatio = bestInliers.length / tdoas.length;
+        
+        // Si trop d'outliers, retourner les TDOA originaux
+        if (RANSAC.lastInlierRatio < RANSAC.minInlierRatio) {
+            return { tdoas: tdoas, toas: toas, outliers: [], inlierRatio: RANSAC.lastInlierRatio };
+        }
+        
+        return {
+            tdoas: bestInliers.length > 0 ? bestInliers : tdoas,
+            toas: toas,
+            outliers: RANSAC.outlierSensors,
+            inlierRatio: RANSAC.lastInlierRatio,
+            solution: bestSolution
+        };
+    }
+    
+    /**
+     * Version simplifiée de Chan pour RANSAC (sans protection zénithale)
+     */
+    function locateDroneChanRANSAC(tdoas) {
+        const d10 = getTDOA(tdoas, 1, 0) * SPEED_OF_SOUND;
+        const d20 = getTDOA(tdoas, 2, 0) * SPEED_OF_SOUND;
+        const d30 = getTDOA(tdoas, 3, 0) * SPEED_OF_SOUND;
+        const d40 = getTDOA(tdoas, 4, 0) * SPEED_OF_SOUND;
+        
+        const di0 = [d10, d20, d30, d40];
+        const A = [], B = [];
+        
+        for (let i = 1; i < 5; i++) {
+            const Si = SENSORS[i];
+            const S0 = SENSORS[0];
+            const d = di0[i - 1];
+            A.push([Si.x - S0.x, Si.y - S0.y, Si.z - S0.z, d]);
+            const Si2 = Si.x**2 + Si.y**2 + Si.z**2;
+            const S02 = S0.x**2 + S0.y**2 + S0.z**2;
+            B.push(0.5 * (Si2 - S02 - d**2));
+        }
+        
+        const result = solveLinearSystem4x4(A, B);
+        return { x: result[0], y: result[1], z: result[2], r0: result[3] };
+    }
+    
+    /**
+     * Mélange aléatoire d'un tableau (Fisher-Yates)
+     */
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+    
+    // ============================================================
+    // MODÈLE DE VENT RÉALISTE
+    // ============================================================
+    // Le vent est un perturbateur INCONNU pour l'estimateur
+    // Il corrompt les TDOA de manière asymétrique
+    // ============================================================
+    
+    const WIND_CONFIG = {
+        enabled: true,
+        // Paramètres de base (modifiables via UI)
+        baseSpeed: 20,           // km/h vitesse de référence à z_ref
+        baseDirection: 45,       // degrés (0=Nord, 90=Est)
+        gustFactor: 1.3,         // facteur multiplicatif des rafales
+        gustProbability: 0.02,   // probabilité de rafale par frame
+        directionDriftRate: 5,   // degrés par minute de dérive
+        
+        // Profil vertical (couche limite atmosphérique)
+        z_ref: 10,               // hauteur de référence (m)
+        z0: 0.1,                 // rugosité de surface (m) - terrain plat
+        
+        // État dynamique
+        currentSpeed: 20,        // km/h instantané
+        currentDirection: 45,    // degrés instantané
+        isGusting: false,
+        gustTimer: 0,
+        gustDuration: 0,
+        directionChangeTimer: 0,
+        targetDirection: 45,
+        
+        // Historique pour affichage
+        history: []
+    };
+    
+    /**
+     * Profil logarithmique du vent en fonction de l'altitude
+     * Loi de Prandtl pour la couche limite atmosphérique
+     * 
+     * @param {number} z - Altitude en mètres
+     * @returns {number} Vitesse du vent à l'altitude z (km/h)
+     */
+    function windSpeedAtAltitude(z) {
+        const cfg = WIND_CONFIG;
+        if (z < cfg.z0) z = cfg.z0;
+        
+        // v(z) = v_ref × ln(z/z0) / ln(z_ref/z0)
+        const logRatio = Math.log(z / cfg.z0) / Math.log(cfg.z_ref / cfg.z0);
+        return cfg.currentSpeed * logRatio;
+    }
+    
+    /**
+     * Obtenir le vecteur vent à une altitude donnée
+     * 
+     * @param {number} z - Altitude en mètres
+     * @returns {object} {vx, vy, speed, direction} en m/s et degrés
+     */
+    function getWindVector(z) {
+        const speedKmh = windSpeedAtAltitude(z);
+        const speedMs = speedKmh / 3.6;
+        const dirRad = WIND_CONFIG.currentDirection * Math.PI / 180;
+        
+        // Convention: direction = d'où vient le vent
+        // Donc le vecteur vitesse du vent va dans la direction opposée
+        const vx = -speedMs * Math.sin(dirRad);
+        const vy = -speedMs * Math.cos(dirRad);
+        
+        return {
+            vx: vx,
+            vy: vy,
+            vz: 0,  // Pas de composante verticale pour simplifier
+            speed: speedMs,
+            speedKmh: speedKmh,
+            direction: WIND_CONFIG.currentDirection
+        };
+    }
+    
+    /**
+     * Mise à jour dynamique du vent (appelée chaque frame)
+     */
+    function updateWind(dt) {
+        const cfg = WIND_CONFIG;
+        if (!cfg.enabled) return;
+        
+        // === Gestion des rafales ===
+        if (cfg.isGusting) {
+            cfg.gustTimer += dt;
+            if (cfg.gustTimer >= cfg.gustDuration) {
+                // Fin de rafale
+                cfg.isGusting = false;
+                cfg.currentSpeed = cfg.baseSpeed;
+            }
+        } else {
+            // Probabilité de déclencher une rafale
+            if (Math.random() < cfg.gustProbability) {
+                cfg.isGusting = true;
+                cfg.gustTimer = 0;
+                cfg.gustDuration = 1 + Math.random() * 3; // 1-4 secondes
+                cfg.currentSpeed = cfg.baseSpeed * (cfg.gustFactor + Math.random() * 0.3);
+                
+                // La rafale peut aussi changer légèrement la direction
+                cfg.currentDirection += (Math.random() - 0.5) * 30;
+            }
+        }
+        
+        // === Dérive lente de la direction ===
+        cfg.directionChangeTimer += dt;
+        if (cfg.directionChangeTimer >= 60) { // Toutes les 60 secondes
+            cfg.directionChangeTimer = 0;
+            // Nouvelle direction cible
+            cfg.targetDirection = cfg.baseDirection + (Math.random() - 0.5) * 60;
+        }
+        
+        // Interpolation douce vers la direction cible
+        const dirDiff = cfg.targetDirection - cfg.currentDirection;
+        cfg.currentDirection += dirDiff * 0.01 * dt;
+        
+        // Normaliser direction [0, 360]
+        cfg.currentDirection = ((cfg.currentDirection % 360) + 360) % 360;
+        
+        // === Fluctuations turbulentes (bruit haute fréquence) ===
+        if (!cfg.isGusting) {
+            // Petites variations autour de la vitesse de base
+            const turbulence = (Math.random() - 0.5) * 0.1 * cfg.baseSpeed;
+            cfg.currentSpeed = cfg.baseSpeed + turbulence;
+        }
+        
+        // Historique pour affichage
+        cfg.history.push({
+            time: sim.time,
+            speed: cfg.currentSpeed,
+            direction: cfg.currentDirection,
+            gusting: cfg.isGusting
+        });
+        if (cfg.history.length > 300) cfg.history.shift();
+    }
+    
+    /**
+     * Calcul du temps de propagation du son avec effet du vent
+     * Le vent modifie la vitesse effective du son dans la direction de propagation
+     * 
+     * @param {object} source - Position de la source {x, y, z}
+     * @param {object} receiver - Position du récepteur {x, y, z}
+     * @returns {number} Temps de propagation en secondes
+     */
+    function propagationTimeWithWind(source, receiver) {
+        const dx = receiver.x - source.x;
+        const dy = receiver.y - source.y;
+        const dz = receiver.z - source.z;
+        const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        
+        if (distance < 1e-6) return 0;
+        
+        if (!WIND_CONFIG.enabled) {
+            return distance / SPEED_OF_SOUND;
+        }
+        
+        // Direction unitaire de propagation (source vers receiver)
+        const ux = dx / distance;
+        const uy = dy / distance;
+        const uz = dz / distance;
+        
+        // Vent moyen le long du trajet (approximation: vent à altitude moyenne)
+        const zMean = (source.z + receiver.z) / 2;
+        const wind = getWindVector(zMean);
+        
+        // Composante du vent dans la direction de propagation
+        // Positive = vent dans le sens de propagation (accélère le son)
+        // Négative = vent contraire (ralentit le son)
+        const windComponent = wind.vx * ux + wind.vy * uy;
+        
+        // Vitesse effective du son
+        const cEffective = SPEED_OF_SOUND + windComponent;
+        
+        // Protection contre vitesse effective négative ou trop faible
+        const cMin = SPEED_OF_SOUND * 0.5;
+        const cFinal = Math.max(cMin, cEffective);
+        
+        return distance / cFinal;
+    }
+    
+    // ============================================================
+    // COHÉRENCE GÉOMÉTRIQUE TDOA
+    // ============================================================
+    // Analyse de la dispersion des solutions pour détecter
+    // et filtrer les perturbations (vent, bruit)
+    // ============================================================
+    
+    const COHERENCE = {
+        enabled: true,
+        // Résultats de l'analyse
+        solutions: [],           // 210 positions candidates
+        centroid: {x: 0, y: 0, z: 0},
+        dispersion: 0,           // écart-type 3D
+        coherenceIndex: 100,     // 0-100%
+        outlierTDOAs: [],        // indices des TDOA problématiques
+        confidenceEllipse: null, // pour affichage
+        
+        // Seuils
+        convergenceThreshold: 5, // mètres - en dessous = bonne cohérence
+        outlierSigma: 2,         // seuil pour détection outliers
+        minCoherence: 30,        // en dessous = alerte
+        
+        // Moyennage glissant (EMA) pour stabilité
+        emaAlpha: 0.3,           // Facteur de lissage (0.3 = réactif, 0.1 = stable)
+        coherenceEMA: 100,       // Cohérence lissée
+        dispersionEMA: 0,        // Dispersion lissée
+        
+        // Historique pour analyse de tendance
+        history: [],
+        historyMaxLen: 30        // ~1 seconde à 30fps
+    };
+    
+    /**
+     * Générer toutes les combinaisons de k éléments parmi n
+     */
+    function combinations(arr, k) {
+        const result = [];
+        
+        function combine(start, combo) {
+            if (combo.length === k) {
+                result.push([...combo]);
+                return;
+            }
+            for (let i = start; i < arr.length; i++) {
+                combo.push(arr[i]);
+                combine(i + 1, combo);
+                combo.pop();
+            }
+        }
+        
+        combine(0, []);
+        return result;
+    }
+    
+    /**
+     * Générer les 10 paires TDOA à partir de 5 capteurs
+     * @returns {Array} Liste des paires {i, j, tdoa}
+     */
+    function generateTDOAPairs(toas) {
+        const pairs = [];
+        const n = toas.length;
+        
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                pairs.push({
+                    i: i,
+                    j: j,
+                    tdoa: toas[i] - toas[j],
+                    pairIndex: pairs.length
+                });
+            }
+        }
+        return pairs;
+    }
+    
+    /**
+     * Résoudre Chan avec un sous-ensemble de 4 TDOA
+     * Version simplifiée pour analyse de cohérence
+     */
+    function solveChanSubset(tdoaPairs, subsetIndices, sensors) {
+        // Extraire les 4 paires sélectionnées
+        const selectedPairs = subsetIndices.map(idx => tdoaPairs[idx]);
+        
+        // Construction du système linéaire simplifié
+        // Pour 4 TDOA, on a un système surdéterminé qu'on résout par moindres carrés
+        
+        try {
+            // Utiliser le premier capteur comme référence
+            const ref = sensors[0];
+            const c = SPEED_OF_SOUND;
+            
+            // Construire matrices pour moindres carrés
+            const A = [];
+            const b = [];
+            
+            for (const pair of selectedPairs) {
+                const si = sensors[pair.i];
+                const sj = sensors[pair.j];
+                const d_ij = pair.tdoa * c; // distance différentielle
+                
+                // Équation linéarisée (approximation)
+                A.push([
+                    2 * (sj.x - si.x),
+                    2 * (sj.y - si.y),
+                    2 * (sj.z - si.z)
+                ]);
+                
+                const ri2 = si.x*si.x + si.y*si.y + si.z*si.z;
+                const rj2 = sj.x*sj.x + sj.y*sj.y + sj.z*sj.z;
+                b.push(d_ij*d_ij + ri2 - rj2);
+            }
+            
+            // Résolution par pseudo-inverse (A^T A)^-1 A^T b
+            const pos = solveLinearSystem(A, b);
+            
+            if (pos && isFinite(pos.x) && isFinite(pos.y) && isFinite(pos.z)) {
+                // Vérifier que la solution est physiquement raisonnable
+                const dist = Math.sqrt(pos.x*pos.x + pos.y*pos.y + pos.z*pos.z);
+                if (dist < 500 && pos.z > -10 && pos.z < 200) {
+                    return pos;
+                }
+            }
+        } catch (e) {
+            // Solution invalide
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Résolution système linéaire par moindres carrés
+     */
+    function solveLinearSystem(A, b) {
+        const m = A.length;
+        const n = A[0].length;
+        
+        // A^T * A
+        const AtA = [];
+        for (let i = 0; i < n; i++) {
+            AtA[i] = [];
+            for (let j = 0; j < n; j++) {
+                let sum = 0;
+                for (let k = 0; k < m; k++) {
+                    sum += A[k][i] * A[k][j];
+                }
+                AtA[i][j] = sum;
+            }
+        }
+        
+        // A^T * b
+        const Atb = [];
+        for (let i = 0; i < n; i++) {
+            let sum = 0;
+            for (let k = 0; k < m; k++) {
+                sum += A[k][i] * b[k];
+            }
+            Atb[i] = sum;
+        }
+        
+        // Résolution par élimination de Gauss
+        const x = gaussianElimination(AtA, Atb);
+        
+        if (x) {
+            return { x: x[0], y: x[1], z: x[2] };
+        }
+        return null;
+    }
+    
+    /**
+     * Élimination de Gauss avec pivot partiel
+     */
+    function gaussianElimination(A, b) {
+        const n = A.length;
+        const aug = A.map((row, i) => [...row, b[i]]);
+        
+        for (let col = 0; col < n; col++) {
+            // Pivot partiel
+            let maxRow = col;
+            for (let row = col + 1; row < n; row++) {
+                if (Math.abs(aug[row][col]) > Math.abs(aug[maxRow][col])) {
+                    maxRow = row;
+                }
+            }
+            [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
+            
+            if (Math.abs(aug[col][col]) < 1e-10) return null;
+            
+            // Élimination
+            for (let row = col + 1; row < n; row++) {
+                const factor = aug[row][col] / aug[col][col];
+                for (let j = col; j <= n; j++) {
+                    aug[row][j] -= factor * aug[col][j];
+                }
+            }
+        }
+        
+        // Substitution arrière
+        const x = new Array(n);
+        for (let i = n - 1; i >= 0; i--) {
+            x[i] = aug[i][n];
+            for (let j = i + 1; j < n; j++) {
+                x[i] -= aug[i][j] * x[j];
+            }
+            x[i] /= aug[i][i];
+        }
+        
+        return x;
+    }
+    
+    /**
+     * Analyse de cohérence géométrique complète
+     * Évalue la dispersion des 210 solutions possibles
+     */
+    function analyzeGeometricCoherence(toas, sensors) {
+        if (!COHERENCE.enabled) {
+            return { valid: true, position: null, coherence: 100 };
+        }
+        
+        // Générer les 10 paires TDOA
+        const tdoaPairs = generateTDOAPairs(toas);
+        
+        // Générer les C(10,4) = 210 combinaisons de 4 paires
+        const pairIndices = Array.from({length: 10}, (_, i) => i);
+        const allCombinations = combinations(pairIndices, 4);
+        
+        // Résoudre pour chaque combinaison
+        const validSolutions = [];
+        const solutionMap = new Map(); // Pour tracker quelles paires donnent quels résultats
+        
+        for (const combo of allCombinations) {
+            const solution = solveChanSubset(tdoaPairs, combo, sensors);
+            if (solution) {
+                solution.pairsUsed = combo;
+                validSolutions.push(solution);
+            }
+        }
+        
+        COHERENCE.solutions = validSolutions;
+        
+        if (validSolutions.length < 10) {
+            // Pas assez de solutions valides
+            COHERENCE.coherenceIndex = 0;
+            COHERENCE.dispersion = Infinity;
+            return { valid: false, position: null, coherence: 0 };
+        }
+        
+        // Calculer le centroïde (médian pour robustesse)
+        const xs = validSolutions.map(s => s.x).sort((a,b) => a-b);
+        const ys = validSolutions.map(s => s.y).sort((a,b) => a-b);
+        const zs = validSolutions.map(s => s.z).sort((a,b) => a-b);
+        
+        const medianIdx = Math.floor(validSolutions.length / 2);
+        const centroid = {
+            x: xs[medianIdx],
+            y: ys[medianIdx],
+            z: zs[medianIdx]
+        };
+        COHERENCE.centroid = centroid;
+        
+        // Calculer la dispersion (écart-type 3D)
+        let sumSqDist = 0;
+        const distances = [];
+        for (const sol of validSolutions) {
+            const dist = Math.sqrt(
+                (sol.x - centroid.x)**2 +
+                (sol.y - centroid.y)**2 +
+                (sol.z - centroid.z)**2
+            );
+            distances.push(dist);
+            sumSqDist += dist * dist;
+        }
+        
+        const dispersion = Math.sqrt(sumSqDist / validSolutions.length);
+        COHERENCE.dispersion = dispersion;
+        
+        // Calculer l'indice de cohérence (0-100%)
+        // 100% si dispersion = 0, décroît exponentiellement
+        const coherenceRaw = Math.max(0, Math.min(100, 
+            100 * Math.exp(-dispersion / COHERENCE.convergenceThreshold)
+        ));
+        
+        // =====================================================
+        // MOYENNAGE GLISSANT (EMA) - Stabilisation
+        // Évite les oscillations dues au bruit ou feuilles
+        // =====================================================
+        const alpha = COHERENCE.emaAlpha;
+        COHERENCE.coherenceEMA = alpha * coherenceRaw + (1 - alpha) * COHERENCE.coherenceEMA;
+        COHERENCE.dispersionEMA = alpha * dispersion + (1 - alpha) * COHERENCE.dispersionEMA;
+        
+        // Utiliser la valeur lissée pour les décisions
+        const coherence = COHERENCE.coherenceEMA;
+        COHERENCE.coherenceIndex = coherence;
+        
+        // Historique pour analyse de tendance
+        COHERENCE.history.push({
+            time: sim.time,
+            raw: coherenceRaw,
+            ema: coherence,
+            dispersion: dispersion
+        });
+        if (COHERENCE.history.length > COHERENCE.historyMaxLen) {
+            COHERENCE.history.shift();
+        }
+        
+        // Détecter les outliers
+        const threshold = dispersion * COHERENCE.outlierSigma;
+        const outlierSolutions = validSolutions.filter((sol, idx) => distances[idx] > threshold);
+        
+        // Identifier les TDOA problématiques (celles qui reviennent souvent dans les outliers)
+        const tdoaOutlierCount = new Array(10).fill(0);
+        for (const outlier of outlierSolutions) {
+            for (const pairIdx of outlier.pairsUsed) {
+                tdoaOutlierCount[pairIdx]++;
+            }
+        }
+        
+        // Normaliser par le nombre d'apparitions possibles
+        const maxCount = Math.max(...tdoaOutlierCount);
+        COHERENCE.outlierTDOAs = tdoaOutlierCount.map((count, idx) => ({
+            pairIndex: idx,
+            pair: tdoaPairs[idx],
+            outlierScore: maxCount > 0 ? count / maxCount : 0
+        })).filter(t => t.outlierScore > 0.5);
+        
+        // Calculer l'ellipse de confiance (approximation 2D pour affichage)
+        const covXY = calculateCovariance2D(validSolutions);
+        COHERENCE.confidenceEllipse = covXY;
+        
+        return {
+            valid: coherence > COHERENCE.minCoherence,
+            position: centroid,
+            coherence: coherence,
+            coherenceRaw: coherenceRaw,
+            dispersion: dispersion,
+            outlierTDOAs: COHERENCE.outlierTDOAs
+        };
+    }
+    
+    /**
+     * Calcul de la matrice de covariance 2D pour l'ellipse de confiance
+     */
+    function calculateCovariance2D(solutions) {
+        if (solutions.length < 2) return null;
+        
+        const n = solutions.length;
+        const meanX = solutions.reduce((s, p) => s + p.x, 0) / n;
+        const meanY = solutions.reduce((s, p) => s + p.y, 0) / n;
+        
+        let varX = 0, varY = 0, covXY = 0;
+        for (const p of solutions) {
+            const dx = p.x - meanX;
+            const dy = p.y - meanY;
+            varX += dx * dx;
+            varY += dy * dy;
+            covXY += dx * dy;
+        }
+        
+        varX /= n;
+        varY /= n;
+        covXY /= n;
+        
+        // Valeurs propres pour les axes de l'ellipse
+        const trace = varX + varY;
+        const det = varX * varY - covXY * covXY;
+        const discriminant = Math.sqrt(Math.max(0, trace * trace / 4 - det));
+        
+        const lambda1 = trace / 2 + discriminant;
+        const lambda2 = trace / 2 - discriminant;
+        
+        // Angle de l'ellipse
+        const angle = 0.5 * Math.atan2(2 * covXY, varX - varY);
+        
+        return {
+            centerX: meanX,
+            centerY: meanY,
+            radiusX: Math.sqrt(lambda1) * 2,  // 2-sigma
+            radiusY: Math.sqrt(Math.max(0.1, lambda2)) * 2,
+            angle: angle
+        };
+    }
+    
+    // ============================================================
+    // MODÈLE ACOUSTIQUE
+    // ============================================================
+    // - Atténuation géométrique 1/r² 
+    // - Effet du vent sur la propagation
+    // - SNR = niveau reçu - bruit de fond
+    // ============================================================
+    
+    // Types de terrain avec bruit de fond associé (dB)
+    const TERRAIN_TYPES = {
+        'water': { name: 'Eau / Lac', noise: 25 },
+        'forest': { name: 'Forêt', noise: 30 },
+        'country': { name: 'Campagne', noise: 35 },
+        'suburban': { name: 'Périurbain', noise: 45 },
+        'urban': { name: 'Urbain', noise: 55 },
+        'industrial': { name: 'Industriel', noise: 60 }
+    };
+    
+    // Types de drones avec niveau sonore SPL @ 1m (mesures terrain)
+    const DRONE_TYPES = {
+        'mini': { name: 'Mini (250g)', lwa: 74 },
+        'consumer': { name: 'Consumer (600g)', lwa: 79 },
+        'prosumer': { name: 'Prosumer (1.2kg)', lwa: 83 },
+        'pro': { name: 'Pro (3kg)', lwa: 87 },
+        'heavy': { name: 'Lourd (5kg)', lwa: 90 },
+        'fpv': { name: 'FPV Racing', lwa: 95 }
+    };
+    
+    const ACOUSTIC = {
+        droneType: 'consumer',
+        terrainType: 'country',
+        backgroundNoise: 35,         // dB depuis terrain
+        
+        // Effet du vent sur propagation (dB par 100m)
+        windEffectFavorable: -4,     // Vent porte le son → moins d'atténuation
+        windEffectAdverse: +5,       // Vent contraire → plus d'atténuation
+        
+        // Seuils
+        detectionThreshold: 3,       // dB SNR min pour détecter
+        
+        // État calculé
+        currentSNR: 0,
+        detectionBubble: []          // Contour de la bulle
+    };
+    
+    /**
+     * Calculer le niveau sonore reçu (dB) à une distance donnée
+     * Formule: Lp(r) = SPL_1m - 20·log₁₀(r) + windEffect
+     */
+    function calculateReceivedLevel(distance, angleToWind) {
+        // Protection contre distance nulle ou négative
+        distance = Math.max(distance, EPSILON_DISTANCE);
+        
+        const SPL_1m = DRONE_TYPES[ACOUSTIC.droneType].lwa; // SPL @ 1m (pas LWA)
+        
+        // Atténuation géométrique pure (1/r²) - protégée par EPSILON_DISTANCE
+        const geometricLoss = 20 * Math.log10(distance);
+        
+        // Vérification NaN/Infinity
+        if (!isFinite(geometricLoss)) {
+            console.warn('calculateReceivedLevel: geometricLoss invalide, distance=', distance);
+            return SPL_1m; // Retourner niveau source par défaut
+        }
+        
+        // Effet du vent
+        let windEffect = 0;
+        if (WIND_CONFIG.enabled && WIND_CONFIG.currentSpeed > 5) {
+            const windFactor = Math.cos(angleToWind);
+            const windStrength = Math.min(1, WIND_CONFIG.currentSpeed / 50);
+            
+            if (windFactor > 0) {
+                // Vent favorable (drone → récepteur)
+                windEffect = ACOUSTIC.windEffectFavorable * windStrength * windFactor * (distance / 100);
+            } else {
+                // Vent contraire
+                windEffect = ACOUSTIC.windEffectAdverse * windStrength * Math.abs(windFactor) * (distance / 100);
+            }
+        }
+        
+        const result = SPL_1m - geometricLoss + windEffect;
+        return isFinite(result) ? result : SPL_1m;
+    }
+    
+    /**
+     * Calculer le SNR pour la position actuelle du drone
+     */
+    function calculateSNR(dronePos) {
+        const distance = Math.sqrt(dronePos.x**2 + dronePos.y**2 + dronePos.z**2);
+        
+        // Angle entre direction drone→récepteur et vent
+        const dirToRx = Math.atan2(-dronePos.y, -dronePos.x);
+        const windDirRad = (WIND_CONFIG.currentDirection - 180) * Math.PI / 180;
+        const angleToWind = dirToRx - windDirRad;
+        
+        const receivedLevel = calculateReceivedLevel(distance, angleToWind);
+        const SNR = receivedLevel - ACOUSTIC.backgroundNoise;
+        
+        ACOUSTIC.currentSNR = SNR;
+        
+        return {
+            distance: distance,
+            receivedLevel: receivedLevel,
+            SNR: SNR,
+            detectable: SNR >= ACOUSTIC.detectionThreshold
+        };
+    }
+    
+    /**
+     * Calculer la bulle de détection dynamique
+     * Retourne les points du contour (dépend du vent)
+     */
+    function calculateDetectionBubble() {
+        const points = [];
+        const numPoints = 36;
+        
+        const SPL_1m = DRONE_TYPES[ACOUSTIC.droneType].lwa;
+        const targetSNR = ACOUSTIC.detectionThreshold;
+        const targetLevel = ACOUSTIC.backgroundNoise + targetSNR;
+        
+        for (let i = 0; i < numPoints; i++) {
+            const angle = (i / numPoints) * 2 * Math.PI;
+            
+            // Direction de propagation
+            const dirToRx = angle + Math.PI;
+            const windDirRad = (WIND_CONFIG.currentDirection - 180) * Math.PI / 180;
+            const angleToWind = dirToRx - windDirRad;
+            
+            // Résolution itérative (windEffect dépend de r)
+            let r = 100;
+            for (let iter = 0; iter < 5; iter++) {
+                let windEffect = 0;
+                if (WIND_CONFIG.enabled && WIND_CONFIG.currentSpeed > 5) {
+                    const windFactor = Math.cos(angleToWind);
+                    const windStrength = Math.min(1, WIND_CONFIG.currentSpeed / 50);
+                    if (windFactor > 0) {
+                        windEffect = ACOUSTIC.windEffectFavorable * windStrength * windFactor * (r / 100);
+                    } else {
+                        windEffect = ACOUSTIC.windEffectAdverse * windStrength * Math.abs(windFactor) * (r / 100);
+                    }
+                }
+                // Formule: SPL_1m - 20·log₁₀(r) + windEffect = targetLevel
+                r = Math.pow(10, (SPL_1m - targetLevel + windEffect) / 20);
+            }
+            
+            r = Math.min(r, 500);
+            r = Math.max(r, 10);
+            
+            points.push({
+                angle: angle,
+                range: r,
+                x: r * Math.cos(angle),
+                y: r * Math.sin(angle)
+            });
+        }
+        
+        ACOUSTIC.detectionBubble = points;
+        return points;
+    }
+    
+    const SENSORS = [
+        { x: -0.5, y: -0.5, z: 0.0 },
+        { x:  0.5, y: -0.5, z: 0.0 },
+        { x:  0.5, y:  0.5, z: 0.0 },
+        { x: -0.5, y:  0.5, z: 0.0 },
+        { x:  0.0, y:  0.0, z: 0.636 }
+    ];
+    
+    // ============================================================
+    // ÉTAT
+    // ============================================================
+    let sim = {
+        running: false,
+        time: 0,
+        timeScale: 1.0, // 1.0 normal, 0.3 slowmo
+        
+        drone: { x: 0, y: 0, z: 40, vx: 0, vy: 0, vz: 0, speed: 12 },
+        traceReal: [],
+        traceEst: [],
+        
+        est: {
+            azimuth: 0, elevation: 0,
+            distance: 100, distanceGeom: 100, distanceIntegrated: 100,
+            x: 80, y: 0, z: 40, // Position cartésienne estimée
+            radialVelocity: 0, lastRadialVelocity: 0,
+            azEMA: { f: 0, m: 0, s: 0 },
+            elEMA: { f: 0, m: 0, s: 0 },
+            distEMA: { f: 100, m: 100, s: 100 },
+            azBuffer: [], elBuffer: [],
+            count: 0,
+            dopplerIntegrating: false // Flag pour UI
+        },
+        
+        fireControl: {
+            mode: 'kheops',
+            cameraAz: 0, cameraEl: 0,
+            tracking: false, lockOn: false,
+            shotsFired: 0, lastShotTime: 0, shotCooldown: 0.3,
+            targetCentered: false, droneDestroyed: false,
+            respawnTimer: 0
+        },
+        
+        // Stats globales
+        stats: {
+            totalKills: 0,
+            totalShots: 0
+        }
+    };
+    
+    let map, mapOverlay, ctxMap;
+    let canvasSide, ctxSide;
+    let canvasCamera, ctxCamera;
+    let canvasReticle, ctxReticle;
+    // Variables de position Khéops (modifiables)
+    let rxLat = RX_LAT;
+    let rxLon = RX_LON;
+    let handoverCircle; // Cercle violet (handover)
+    let bubbleCircle;   // Cercle cyan (bulle)
+    let kheopsMarker;   // Marqueur central
+    let animationId = null;
+    
+    // ============================================================
+    // CONVERSION COORDONNÉES (géodésique précise)
+    // ============================================================
+    function metersToLatLon(x, y) {
+        // Conversion locale autour du récepteur
+        const mPerDegLat = metersPerDegLat(rxLat);
+        const mPerDegLon = metersPerDegLon(rxLat);
+        return { 
+            lat: rxLat + y / mPerDegLat, 
+            lon: rxLon + x / mPerDegLon 
+        };
+    }
+    
+    function latLonToMeters(lat, lon) {
+        const mPerDegLat = metersPerDegLat(rxLat);
+        const mPerDegLon = metersPerDegLon(rxLat);
+        return {
+            x: (lon - rxLon) * mPerDegLon,
+            y: (lat - rxLat) * mPerDegLat
+        };
+    }
+    
+    function normalize(v) {
+        const m = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+        return m < 1e-10 ? { x: 0, y: 0, z: 1 } : { x: v.x/m, y: v.y/m, z: v.z/m };
+    }
+    
+    function magnitude(v) { return Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); }
+    function dot(a, b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+    
+    function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1,3), 16);
+        const g = parseInt(hex.slice(3,5), 16);
+        const b = parseInt(hex.slice(5,7), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+    }
+    
+    // ============================================================
+    // INIT
+    // ============================================================
+    function init() {
+        map = L.map('map', { center: [rxLat, rxLon], zoom: 17, zoomControl: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        bubbleCircle = L.circle([rxLat, rxLon], { radius: BUBBLE_RADIUS, color: '#00d4ff', fillOpacity: 0.05, weight: 2, dashArray: '5,5' }).addTo(map);
+        handoverCircle = L.circle([rxLat, rxLon], { radius: HANDOVER_DISTANCE, color: '#ff00ff', fillOpacity: 0.08, weight: 2 }).addTo(map);
+        kheopsMarker = L.circleMarker([rxLat, rxLon], { radius: 6, color: '#8b5cf6', fillColor: '#8b5cf6', fillOpacity: 1 }).addTo(map);
+        
+        // Clic sur la carte pour déplacer Khéops
+        map.on('click', function(e) {
+            rxLat = e.latlng.lat;
+            rxLon = e.latlng.lng;
+            // Mettre à jour les cercles et le marqueur
+            bubbleCircle.setLatLng([rxLat, rxLon]);
+            handoverCircle.setLatLng([rxLat, rxLon]);
+            kheopsMarker.setLatLng([rxLat, rxLon]);
+        });
+        
+        mapOverlay = document.getElementById('mapOverlay');
+        ctxMap = mapOverlay.getContext('2d');
+        canvasSide = document.getElementById('canvasSide');
+        ctxSide = canvasSide.getContext('2d');
+        canvasCamera = document.getElementById('canvasCamera');
+        ctxCamera = canvasCamera.getContext('2d');
+        canvasReticle = document.getElementById('canvasReticle');
+        ctxReticle = canvasReticle.getContext('2d');
+        
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+        map.on('move zoom', drawMapOverlay);
+        
+        spawnDrone();
+        draw();
+        
+        // Initialiser l'affichage ISO 9613-1
+        updateISODisplay();
+    }
+    
+    function resizeCanvases() {
+        const mapC = document.getElementById('mapContainer');
+        mapOverlay.width = mapC.clientWidth;
+        mapOverlay.height = mapC.clientHeight;
+        
+        [canvasSide, canvasCamera, canvasReticle].forEach(c => {
+            const r = c.parentElement.getBoundingClientRect();
+            c.width = r.width;
+            c.height = r.height;
+        });
+        
+        if (!sim.running) draw();
+    }
+    
+    function spawnDrone() {
+        const angle = Math.random() * 2 * Math.PI;
+        const r = BUBBLE_RADIUS * 0.95;
+        
+        sim.drone.x = r * Math.cos(angle);
+        sim.drone.y = r * Math.sin(angle);
+        sim.drone.z = 25 + Math.random() * 30;
+        
+        const toCenter = normalize({ x: -sim.drone.x, y: -sim.drone.y, z: 0 });
+        const dev = (Math.random() - 0.5) * Math.PI / 4;
+        const c = Math.cos(dev), s = Math.sin(dev);
+        
+        sim.drone.vx = sim.drone.speed * (toCenter.x * c - toCenter.y * s);
+        sim.drone.vy = sim.drone.speed * (toCenter.x * s + toCenter.y * c);
+        sim.drone.vz = 0;
+        
+        const realDist = magnitude(sim.drone);
+        
+        // Reset estimateur - ON NE TRICHE PAS !
+        // Départ aveugle : azimuth=0, elevation=0, distance arbitraire
+        sim.est = {
+            azimuth: 0,
+            elevation: 0,
+            distance: 80, // Distance arbitraire, pas basée sur realDist
+            distanceGeom: 80,
+            distanceIntegrated: 80,
+            radialVelocity: 0, lastRadialVelocity: 0,
+            azEMA: { f: 0, m: 0, s: 0 },
+            elEMA: { f: 0, m: 0, s: 0 },
+            distEMA: { f: 80, m: 80, s: 80 },
+            azBuffer: [], elBuffer: [],
+            count: 0,
+            dopplerIntegrating: false,
+            signalLost: true,           // Pas de signal au départ
+            lastValidTime: 0,           // Dernière fois qu'on avait un signal
+            signalLostDuration: 0,      // Durée sans signal
+            dopplerValid: true,
+            ransacInlierRatio: 1.0,
+            ransacOutliers: []
+        };
+        
+        // Reset Kalman
+        if (KALMAN.enabled) {
+            kalmanInit();
+            // Initialiser avec position estimée initiale
+            KALMAN.state = [80, 0, 40, 0, 0, 0];
+        }
+        
+        // Reset RANSAC
+        RANSAC.bestInliers = [];
+        RANSAC.outlierSensors = [];
+        RANSAC.lastInlierRatio = 1.0;
+        
+        // Reset Cohérence EMA
+        COHERENCE.coherenceEMA = 100;
+        COHERENCE.dispersionEMA = 0;
+        COHERENCE.history = [];
+        
+        sim.fireControl = {
+            mode: 'kheops',
+            cameraAz: 0, cameraEl: 0,
+            tracking: false, lockOn: false,
+            visualContact: false, // La caméra a-t-elle vu le drone réel ?
+            shotsFired: 0, lastShotTime: 0, shotCooldown: 0.3,
+            targetCentered: false, droneDestroyed: false,
+            respawnTimer: 0
+        };
+        
+        sim.traceReal = [];
+        sim.traceEst = [];
+        sim.timeScale = 1.0;
+    }
+    
+    // ============================================================
+    // ESTIMATION TDOA AVEC EFFET DU VENT
+    // ============================================================
+    
+    /**
+     * Calcul des TOA RÉELS (affectés par le vent - inconnu de l'estimateur)
+     */
+    function computeTDOA_Real(pos) {
+        // TOA réels avec effet du vent
+        const toa = SENSORS.map(s => {
+            return propagationTimeWithWind(pos, s);
+        });
+        
+        const tdoas = [];
+        for (let i = 0; i < 5; i++) {
+            for (let j = i + 1; j < 5; j++) {
+                tdoas.push({ i, j, value: toa[i] - toa[j] });
+            }
+        }
+        return { tdoas, toa };
+    }
+    
+    /**
+     * Ancienne fonction (sans vent) - gardée pour comparaison
+     */
+    function computeTDOA(pos) {
+        const toa = SENSORS.map(s => Math.sqrt((pos.x-s.x)**2 + (pos.y-s.y)**2 + (pos.z-s.z)**2) / SPEED_OF_SOUND);
+        const tdoas = [];
+        for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) tdoas.push({ i, j, value: toa[i] - toa[j] });
+        return { tdoas, toa };
+    }
+    
+    // ============================================================
+    // MÉTHODE DE CHAN - Solution analytique TDOA 3D
+    // ============================================================
+    
+    function locateDroneChan(tdoas) {
+        // Extraire les d_i0 = c * tau_i0 (distances différentielles par rapport à S0)
+        const d10 = getTDOA(tdoas, 1, 0) * SPEED_OF_SOUND; // R1 - R0
+        const d20 = getTDOA(tdoas, 2, 0) * SPEED_OF_SOUND; // R2 - R0
+        const d30 = getTDOA(tdoas, 3, 0) * SPEED_OF_SOUND; // R3 - R0
+        const d40 = getTDOA(tdoas, 4, 0) * SPEED_OF_SOUND; // R4 - R0
+        
+        const di0 = [d10, d20, d30, d40];
+        
+        // =====================================================
+        // DÉTECTION ZONE ZÉNITHALE
+        // Quand le drone est au-dessus du réseau, les TDOA
+        // des capteurs au sol (S0-S3) tendent vers 0
+        // → Matrice mal conditionnée → erreur altitude massive
+        // =====================================================
+        const horizontalTDOASum = Math.abs(d10) + Math.abs(d20) + Math.abs(d30);
+        const isNearZenith = horizontalTDOASum < 0.5; // Seuil ~0.5m de différence totale
+        
+        // Construire le système A * [x, y, z, R0]^T = B
+        const A = [];
+        const B = [];
+        
+        for (let i = 1; i < 5; i++) {
+            const Si = SENSORS[i];
+            const S0 = SENSORS[0];
+            const d = di0[i - 1];
+            
+            // Ligne de A : [xi - x0, yi - y0, zi - z0, d_i0]
+            A.push([
+                Si.x - S0.x,
+                Si.y - S0.y,
+                Si.z - S0.z,
+                d
+            ]);
+            
+            // Élément de B : 0.5 * (|Si|² - |S0|² - d_i0²)
+            const Si2 = Si.x**2 + Si.y**2 + Si.z**2;
+            const S02 = S0.x**2 + S0.y**2 + S0.z**2;
+            B.push(0.5 * (Si2 - S02 - d**2));
+        }
+        
+        // Résoudre le système 4x4
+        const result = solveLinearSystem4x4(A, B);
+        
+        let finalX = result[0];
+        let finalY = result[1];
+        let finalZ = result[2];
+        let finalR0 = result[3];
+        
+        // =====================================================
+        // CORRECTION ZÉNITHALE
+        // En zone zénithale, X et Y sont proches de 0
+        // On utilise le TOA du capteur S4 (zénithal) pour Z
+        // =====================================================
+        if (isNearZenith) {
+            // Position horizontale : moyenne pondérée vers le centre
+            // (les TDOA horizontaux sont peu fiables ici)
+            finalX = result[0] * 0.3; // Atténuer les erreurs X
+            finalY = result[1] * 0.3; // Atténuer les erreurs Y
+            
+            // Altitude : utiliser directement le TDOA S4-S0
+            // d40 = R4 - R0, et si drone au zénith:
+            // R4 ≈ Z - h4 (distance au capteur zénithal)
+            // R0 ≈ Z (distance au capteur sol)
+            // Donc d40 ≈ -h4 → Z ≈ R0 ≈ (R4 + h4)
+            // 
+            // Méthode alternative: estimer Z depuis R0
+            if (finalR0 > 0) {
+                // R0² = X² + Y² + Z² → Z = √(R0² - X² - Y²)
+                const r0sq = finalR0 * finalR0;
+                const xySq = finalX * finalX + finalY * finalY;
+                if (r0sq > xySq) {
+                    finalZ = Math.sqrt(r0sq - xySq);
+                }
+            }
+            
+            // Fallback: si R0 invalide, utiliser le capteur S4
+            if (finalZ <= 0 || !isFinite(finalZ)) {
+                // TOA moyen des capteurs sol
+                const toa0 = getTDOA(tdoas, 0, 0) || 0; // Référence
+                // Estimation depuis d40: Z ≈ |d40| + hauteur_S4
+                const S4 = SENSORS[4];
+                finalZ = Math.abs(d40) + S4.z + 5; // +5m marge sécurité
+            }
+        }
+        
+        // =====================================================
+        // VALIDATION ET LISSAGE
+        // =====================================================
+        // Vérifier cohérence de Z
+        if (!isFinite(finalZ) || finalZ < 1) {
+            finalZ = sim.est.z || 30; // Garder estimation précédente
+        }
+        
+        // Limiter les variations brusques de Z (anti-spike)
+        if (sim.est.z && Math.abs(finalZ - sim.est.z) > 50) {
+            // Variation > 50m en une frame = aberrant
+            finalZ = sim.est.z + Math.sign(finalZ - sim.est.z) * 5;
+        }
+        
+        return {
+            x: finalX,
+            y: finalY,
+            z: Math.max(1, finalZ), // Z >= 1m
+            r0: finalR0,
+            isZenith: isNearZenith
+        };
+    }
+    
+    // Récupérer un TDOA (gère l'ordre i,j ou j,i)
+    function getTDOA(tdoas, i, j) {
+        const direct = tdoas.find(t => t.i === i && t.j === j);
+        if (direct) return direct.value;
+        const inverse = tdoas.find(t => t.i === j && t.j === i);
+        if (inverse) return -inverse.value;
+        return 0;
+    }
+    
+    // Solveur Gauss-Jordan pour système 4x4
+    function solveLinearSystem4x4(A, B) {
+        const n = 4;
+        // Copier pour ne pas modifier les originaux
+        const M = A.map(row => [...row]);
+        const b = [...B];
+        
+        // Élimination de Gauss avec pivot partiel
+        for (let i = 0; i < n; i++) {
+            // Chercher le pivot max
+            let maxRow = i;
+            for (let k = i + 1; k < n; k++) {
+                if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) maxRow = k;
+            }
+            // Échanger les lignes
+            [M[i], M[maxRow]] = [M[maxRow], M[i]];
+            [b[i], b[maxRow]] = [b[maxRow], b[i]];
+            
+            // Vérifier pivot non nul
+            if (Math.abs(M[i][i]) < 1e-12) continue;
+            
+            // Élimination
+            for (let j = i + 1; j < n; j++) {
+                const factor = M[j][i] / M[i][i];
+                b[j] -= factor * b[i];
+                for (let k = i; k < n; k++) {
+                    M[j][k] -= factor * M[i][k];
+                }
+            }
+        }
+        
+        // Substitution arrière
+        const x = new Array(n).fill(0);
+        for (let i = n - 1; i >= 0; i--) {
+            if (Math.abs(M[i][i]) < 1e-12) continue;
+            let sum = 0;
+            for (let k = i + 1; k < n; k++) {
+                sum += M[i][k] * x[k];
+            }
+            x[i] = (b[i] - sum) / M[i][i];
+        }
+        
+        return x;
+    }
+    
+    function estimateDirection(tdoas) {
+        const pairs = [{ i: 0, j: 1 }, { i: 0, j: 2 }, { i: 0, j: 3 }, { i: 0, j: 4 }];
+        const A = [], b = [];
+        for (const p of pairs) {
+            const si = SENSORS[p.i], sj = SENSORS[p.j];
+            A.push([sj.x - si.x, sj.y - si.y, sj.z - si.z]);
+            b.push(tdoas.find(t => t.i === p.i && t.j === p.j).value * SPEED_OF_SOUND);
+        }
+        const dir = solveLeastSquares(A, b);
+        const u = normalize({ x: dir[0], y: dir[1], z: dir[2] });
+        return { azimuth: Math.atan2(u.y, u.x), elevation: Math.asin(Math.max(-1, Math.min(1, u.z))), u };
+    }
+    
+    function solveLeastSquares(A, b) {
+        const ATA = [[0,0,0],[0,0,0],[0,0,0]], ATb = [0,0,0];
+        for (let i = 0; i < A.length; i++) {
+            for (let j = 0; j < 3; j++) {
+                ATb[j] += A[i][j] * b[i];
+                for (let k = 0; k < 3; k++) ATA[j][k] += A[i][j] * A[i][k];
+            }
+        }
+        return solve3x3(ATA, ATb);
+    }
+    
+    function solve3x3(M, v) {
+        const det = M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1]) - M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0]) + M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
+        if (Math.abs(det) < 1e-12) return [0, 0, 1];
+        const inv = [
+            [(M[1][1]*M[2][2]-M[1][2]*M[2][1])/det, (M[0][2]*M[2][1]-M[0][1]*M[2][2])/det, (M[0][1]*M[1][2]-M[0][2]*M[1][1])/det],
+            [(M[1][2]*M[2][0]-M[1][0]*M[2][2])/det, (M[0][0]*M[2][2]-M[0][2]*M[2][0])/det, (M[0][2]*M[1][0]-M[0][0]*M[1][2])/det],
+            [(M[1][0]*M[2][1]-M[1][1]*M[2][0])/det, (M[0][1]*M[2][0]-M[0][0]*M[2][1])/det, (M[0][0]*M[1][1]-M[0][1]*M[1][0])/det]
+        ];
+        return [inv[0][0]*v[0]+inv[0][1]*v[1]+inv[0][2]*v[2], inv[1][0]*v[0]+inv[1][1]*v[1]+inv[1][2]*v[2], inv[2][0]*v[0]+inv[2][1]*v[1]+inv[2][2]*v[2]];
+    }
+    
+    function estimateDistanceGeometric(toa, u) {
+        let r = toa.reduce((a,b)=>a+b,0)/toa.length * SPEED_OF_SOUND;
+        for (let iter = 0; iter < 5; iter++) {
+            let sumErr = 0, sumGrad = 0;
+            const px = r*u.x, py = r*u.y, pz = r*u.z;
+            for (let i = 1; i < SENSORS.length; i++) {
+                const s = SENSORS[i], s0 = SENSORS[0];
+                const d = Math.sqrt((px-s.x)**2+(py-s.y)**2+(pz-s.z)**2);
+                const d0 = Math.sqrt((px-s0.x)**2+(py-s0.y)**2+(pz-s0.z)**2);
+                const err = (d-d0)/SPEED_OF_SOUND - (toa[i]-toa[0]);
+                sumErr += err*err;
+                sumGrad += 2*err*((u.x*(px-s.x)+u.y*(py-s.y)+u.z*(pz-s.z))/d - (u.x*(px-s0.x)+u.y*(py-s0.y)+u.z*(pz-s0.z))/d0)/SPEED_OF_SOUND;
+            }
+            if (Math.abs(sumGrad) > 1e-10) r -= 0.5*sumErr/sumGrad;
+            r = Math.max(10, Math.min(BUBBLE_RADIUS*2, r));
+        }
+        return r;
+    }
+    
+    function ema(old, newVal, period) { return 2/(period+1)*newVal + (1-2/(period+1))*old; }
+    
+    function updateEstimator() {
+        const dronePos = sim.drone, vel = { x: dronePos.vx, y: dronePos.vy, z: dronePos.vz };
+        const e = sim.est;
+        const dt = BASE_DT * sim.timeScale;
+        
+        // =====================================================
+        // ÉTAPE 1: PRÉDICTION KALMAN
+        // Prédire la position basée sur le modèle de mouvement
+        // =====================================================
+        if (KALMAN.enabled) {
+            kalmanPredict(dt);
+        }
+        
+        // =====================================================
+        // ÉTAPE 2: VÉRIFICATION SNR - Le drone est-il audible ?
+        // =====================================================
+        const snrInfo = calculateSNR(dronePos);
+        
+        if (snrInfo.SNR < ACOUSTIC.detectionThreshold) {
+            // SIGNAL PERDU - Utiliser uniquement la prédiction Kalman
+            e.signalLost = true;
+            e.signalLostDuration += dt;
+            
+            // Utiliser l'état prédit par Kalman (pas de mise à jour)
+            if (KALMAN.enabled && KALMAN.initialized) {
+                const kState = kalmanGetState();
+                e.x = kState.x;
+                e.y = kState.y;
+                e.z = Math.max(MIN_ALTITUDE, kState.z);
+                e.distance = Math.sqrt(e.x**2 + e.y**2 + e.z**2);
+                e.azimuth = Math.atan2(e.y, e.x);
+                e.elevation = Math.asin(Math.max(-1, Math.min(1, e.z / e.distance)));
+            }
+            return;
+        }
+        
+        // =====================================================
+        // ÉTAPE 3: SIGNAL OK - Drone audible
+        // =====================================================
+        e.signalLost = false;
+        e.lastValidTime = sim.time;
+        e.signalLostDuration = 0;
+        
+        // =====================================================
+        // ÉTAPE 4: CALCUL TDOA RÉELS
+        // =====================================================
+        const { tdoas: rawTDOAs, toa } = computeTDOA_Real(dronePos);
+        e.count++;
+        
+        // =====================================================
+        // ÉTAPE 5: FILTRAGE RANSAC DES TDOA
+        // Éliminer les capteurs aberrants (saturés, écho, vent local)
+        // =====================================================
+        const ransacResult = ransacFilterTDOA(rawTDOAs, toa);
+        const tdoas = ransacResult.tdoas;
+        
+        // Stocker info RANSAC pour UI
+        e.ransacInlierRatio = ransacResult.inlierRatio;
+        e.ransacOutliers = ransacResult.outliers;
+        
+        // =====================================================
+        // ÉTAPE 6: ANALYSE DE COHÉRENCE GÉOMÉTRIQUE (avec EMA)
+        // =====================================================
+        const coherenceResult = analyzeGeometricCoherence(toa, SENSORS);
+        
+        e.coherence = coherenceResult.coherence;
+        e.coherenceRaw = coherenceResult.coherenceRaw || coherenceResult.coherence;
+        e.dispersion = coherenceResult.dispersion || 0;
+        e.coherenceValid = coherenceResult.valid;
+        
+        // =====================================================
+        // ÉTAPE 7: MÉTHODE DE CHAN - Solution analytique
+        // =====================================================
+        const chanResult = locateDroneChan(tdoas);
+        e.isZenith = chanResult.isZenith || false;
+        
+        // Fusion Chan/Centroïde selon cohérence
+        let rawX, rawY, rawZ;
+        
+        if (COHERENCE.enabled && coherenceResult.valid && coherenceResult.position) {
+            const w = coherenceResult.coherence / 100;
+            rawX = w * chanResult.x + (1 - w) * coherenceResult.position.x;
+            rawY = w * chanResult.y + (1 - w) * coherenceResult.position.y;
+            rawZ = w * chanResult.z + (1 - w) * coherenceResult.position.z;
+        } else if (coherenceResult.coherence < COHERENCE.minCoherence && COHERENCE.centroid) {
+            rawX = COHERENCE.centroid.x;
+            rawY = COHERENCE.centroid.y;
+            rawZ = COHERENCE.centroid.z;
+        } else {
+            rawX = chanResult.x;
+            rawY = chanResult.y;
+            rawZ = chanResult.z;
+        }
+        
+        // Protection NaN
+        if (!isFinite(rawX)) rawX = e.x || 0;
+        if (!isFinite(rawY)) rawY = e.y || 0;
+        if (!isFinite(rawZ)) rawZ = e.z || 30;
+        rawZ = Math.max(MIN_ALTITUDE, Math.min(MAX_ALTITUDE, rawZ));
+        
+        // =====================================================
+        // ÉTAPE 8: MISE À JOUR KALMAN
+        // Fusionner la mesure acoustique avec la prédiction
+        // =====================================================
+        let finalX, finalY, finalZ;
+        
+        if (KALMAN.enabled) {
+            // Ajuster le bruit de mesure selon la cohérence
+            // Faible cohérence = haute incertitude sur la mesure
+            const coherenceFactor = Math.max(0.1, coherenceResult.coherence / 100);
+            const adaptiveNoise = KALMAN.measurementNoise / coherenceFactor;
+            
+            // Mise à jour Kalman avec la mesure acoustique
+            kalmanUpdate({ x: rawX, y: rawY, z: rawZ }, adaptiveNoise);
+            
+            // Utiliser l'état filtré
+            const kState = kalmanGetState();
+            finalX = kState.x;
+            finalY = kState.y;
+            finalZ = kState.z;
+            
+            // Stocker info Kalman pour UI
+            e.kalmanVx = kState.vx;
+            e.kalmanVy = kState.vy;
+            e.kalmanVz = kState.vz;
+            e.kalmanInnovation = KALMAN.innovation;
+        } else {
+            finalX = rawX;
+            finalY = rawY;
+            finalZ = rawZ;
+        }
+        
+        // Contraintes physiques finales
+        finalZ = Math.max(MIN_ALTITUDE, Math.min(MAX_ALTITUDE, finalZ));
+        
+        // Position estimée filtrée
+        e.x = finalX;
+        e.y = finalY;
+        e.z = finalZ;
+        
+        // Coordonnées sphériques
+        e.distance = Math.sqrt(e.x**2 + e.y**2 + e.z**2);
+        e.distance = Math.max(e.distance, EPSILON_DISTANCE);
+        e.azimuth = Math.atan2(e.y, e.x);
+        e.elevation = Math.asin(Math.max(-1, Math.min(1, e.z / e.distance)));
+        
+        // =====================================================
+        // ÉTAPE 9: VALIDATION CROISÉE DOPPLER
+        // Comparer vitesse Doppler vs vitesse géométrique
+        // =====================================================
+        const vRadDoppler = dot(vel, normalize({ x: -dronePos.x, y: -dronePos.y, z: -dronePos.z }));
+        
+        // Vitesse radiale géométrique (depuis Kalman ou différence de position)
+        let vRadGeom = 0;
+        if (KALMAN.enabled && KALMAN.initialized) {
+            const kState = kalmanGetState();
+            // Vitesse radiale = projection de (vx,vy,vz) sur direction radiale
+            const dirToCenter = normalize({ x: -e.x, y: -e.y, z: -e.z });
+            vRadGeom = kState.vx * dirToCenter.x + kState.vy * dirToCenter.y + kState.vz * dirToCenter.z;
+        }
+        
+        // Écart entre Doppler et géométrique
+        const dopplerGeomDiff = Math.abs(vRadDoppler - vRadGeom);
+        e.dopplerGeomDiff = dopplerGeomDiff;
+        
+        // Validation: si écart > seuil, les données sont incohérentes
+        const DOPPLER_GEOM_THRESHOLD = 5.0; // m/s d'écart max toléré
+        
+        if (Math.abs(vRadDoppler) > MAX_DRONE_SPEED) {
+            // Doppler aberrant
+            e.radialVelocity = e.lastRadialVelocity || 0;
+            e.dopplerValid = false;
+        } else if (dopplerGeomDiff > DOPPLER_GEOM_THRESHOLD && e.count > 10) {
+            // Incohérence Doppler/Géométrie → réduire la cohérence
+            e.dopplerValid = false;
+            e.coherence = Math.min(e.coherence, 50); // Forcer cohérence basse
+            e.radialVelocity = (vRadDoppler + vRadGeom) / 2; // Moyenne
+        } else {
+            e.radialVelocity = vRadDoppler;
+            e.lastRadialVelocity = vRadDoppler;
+            e.dopplerValid = true;
+        }
+        
+        // =====================================================
+        // ÉTAPE 10: COMPENSATION GHOSTING
+        // =====================================================
+        const propagationDelay = e.distance / SPEED_OF_SOUND;
+        
+        if (e.dopplerValid && Math.abs(e.radialVelocity) > DOPPLER_DEADZONE) {
+            const correction = e.radialVelocity * propagationDelay;
+            e.distancePredicted = Math.max(EPSILON_DISTANCE, e.distance - correction);
+        } else {
+            e.distancePredicted = e.distance;
+        }
+        
+        // Position prédite pour conduite de tir
+        const predRatio = e.distancePredicted / e.distance;
+        e.xPredicted = e.x * predRatio;
+        e.yPredicted = e.y * predRatio;
+        e.zPredicted = e.z * predRatio;
+        
+        // Compatibilité UI
+        e.distanceGeom = e.distance;
+        e.distanceIntegrated = e.distance;
+        e.dopplerIntegrating = Math.abs(e.radialVelocity) >= DOPPLER_DEADZONE;
+        e.propagationDelay = propagationDelay;
+        e.ghostingCorrection = e.distance - e.distancePredicted;
+    }
+    
+    // ============================================================
+    // CONDUITE DE TIR
+    // ============================================================
+    function updateFireControl() {
+        const fc = sim.fireControl;
+        const e = sim.est;
+        const dt = BASE_DT * sim.timeScale;
+        
+        // Respawn timer
+        if (fc.droneDestroyed) {
+            fc.respawnTimer += dt;
+            if (fc.respawnTimer >= RESPAWN_DELAY) {
+                spawnDrone();
+            }
+            return;
+        }
+        
+        // Handover basé sur distance ESTIMÉE
+        const wasCamera = fc.mode === 'camera';
+        
+        if (e.distance < HANDOVER_DISTANCE && fc.mode === 'kheops') {
+            fc.mode = 'camera';
+            fc.tracking = true;
+            sim.timeScale = 0.3; // SLOWMO!
+        } else if (e.distance >= HANDOVER_DISTANCE + 10 && fc.mode === 'camera') {
+            fc.mode = 'kheops';
+            fc.tracking = false;
+            fc.lockOn = false;
+            fc.visualContact = false; // Reset pour prochain handover
+            sim.timeScale = 1.0; // Normal
+        }
+        
+        // Slowmo indicator
+        document.getElementById('slowmoIndicator').style.display = (sim.timeScale < 1) ? 'block' : 'none';
+        
+        // Mode caméra - tracking
+        if (fc.mode === 'camera' && fc.tracking) {
+            const trackSpeed = 0.12;
+            
+            // Position RÉELLE du drone (ce que la caméra voit vraiment)
+            const realDist = magnitude(sim.drone);
+            const realAz = Math.atan2(sim.drone.y, sim.drone.x);
+            const realEl = Math.asin(sim.drone.z / realDist);
+            
+            // Au début, la caméra pointe vers l'estimé (handover de Khéops)
+            // Mais dès qu'elle "voit" le drone réel, elle le track directement
+            let targetAz, targetEl;
+            
+            // Vérifier si le drone réel est dans le FOV actuel (~30°)
+            let azOffFromCam = realAz - fc.cameraAz;
+            if (azOffFromCam > Math.PI) azOffFromCam -= 2*Math.PI;
+            if (azOffFromCam < -Math.PI) azOffFromCam += 2*Math.PI;
+            const elOffFromCam = realEl - fc.cameraEl;
+            const inFOV = Math.abs(azOffFromCam) < Math.PI/6 && Math.abs(elOffFromCam) < Math.PI/6;
+            
+            if (inFOV || fc.visualContact) {
+                // Caméra voit le drone réel → track le RÉEL
+                fc.visualContact = true;
+                targetAz = realAz;
+                targetEl = realEl;
+            } else {
+                // Pas encore de contact visuel → suivre l'estimé (guidage Khéops)
+                targetAz = e.azimuth;
+                targetEl = e.elevation;
+            }
+            
+            let azDiff = targetAz - fc.cameraAz;
+            if (azDiff > Math.PI) azDiff -= 2*Math.PI;
+            if (azDiff < -Math.PI) azDiff += 2*Math.PI;
+            const elDiff = targetEl - fc.cameraEl;
+            
+            fc.cameraAz += Math.max(-trackSpeed, Math.min(trackSpeed, azDiff * 0.25));
+            fc.cameraEl += Math.max(-trackSpeed, Math.min(trackSpeed, elDiff * 0.25));
+            
+            // Lock basé sur le drone RÉEL (pas l'estimé)
+            let finalAzOff = realAz - fc.cameraAz;
+            if (finalAzOff > Math.PI) finalAzOff -= 2*Math.PI;
+            if (finalAzOff < -Math.PI) finalAzOff += 2*Math.PI;
+            const finalElOff = realEl - fc.cameraEl;
+            const angularError = Math.sqrt(finalAzOff*finalAzOff + finalElOff*finalElOff) * 180/Math.PI;
+            
+            fc.targetCentered = angularError < 3;
+            fc.lockOn = angularError < 1.5;
+            
+            // TIR AUTO - utilise la distance PRÉDICTIVE (compensation ghosting)
+            const effectiveDistance = e.distancePredicted || e.distance;
+            if (fc.lockOn && effectiveDistance < HANDOVER_DISTANCE && sim.time - fc.lastShotTime > fc.shotCooldown) {
+                const realDist = magnitude(sim.drone);
+                const realAz = Math.atan2(sim.drone.y, sim.drone.x);
+                const realEl = Math.asin(sim.drone.z / Math.max(realDist, EPSILON_DISTANCE));
+                
+                const aimError = Math.sqrt((fc.cameraAz - realAz)**2 + (fc.cameraEl - realEl)**2) * realDist;
+                
+                fc.shotsFired++;
+                sim.stats.totalShots++;
+                fc.lastShotTime = sim.time;
+                
+                // Log détaillé pour analyse
+                const ghostCorr = e.ghostingCorrection || 0;
+                console.log(`TIR #${sim.stats.totalShots} | Dist: ${effectiveDistance.toFixed(1)}m | Ghost: ${ghostCorr.toFixed(2)}m | Aim: ${aimError.toFixed(2)}m`);
+                
+                if (aimError < SHOTGUN_SPREAD) {
+                    fc.droneDestroyed = true;
+                    fc.respawnTimer = 0;
+                    sim.stats.totalKills++;
+                    console.log(`✓ KILL #${sim.stats.totalKills} - Erreur: ${aimError.toFixed(2)}m`);
+                } else {
+                    console.log(`✗ MISS - Erreur: ${aimError.toFixed(2)}m > Spread: ${SHOTGUN_SPREAD}m`);
+                }
+            }
+        }
+    }
+    
+    // ============================================================
+    // PHYSIQUE DRONE
+    // ============================================================
+    function updateDrone() {
+        if (sim.fireControl.droneDestroyed) return;
+        
+        const d = sim.drone;
+        const dt = BASE_DT * sim.timeScale;
+        
+        // =====================================================
+        // COMPORTEMENT FPV AGRESSIF - Manœuvres jusqu'à 2g
+        // =====================================================
+        
+        // Paramètres de manœuvre
+        const maxG = 2.0;                    // Accélération max en g
+        const g = 9.81;                      // m/s²
+        const maxAccel = maxG * g;           // ~20 m/s²
+        const maneuverFreq = 0.5;            // Probabilité de manœuvre par seconde
+        const maneuverDuration = 0.5 + Math.random() * 1.5; // 0.5 à 2 secondes
+        
+        // Timer de manœuvre
+        if (!d.maneuverTimer) d.maneuverTimer = 0;
+        if (!d.maneuverAccel) d.maneuverAccel = { x: 0, y: 0, z: 0 };
+        if (!d.maneuverEnd) d.maneuverEnd = 0;
+        
+        d.maneuverTimer += dt;
+        
+        // Déclencher une nouvelle manœuvre ?
+        if (sim.time > d.maneuverEnd && Math.random() < maneuverFreq * dt) {
+            // Direction de manœuvre aléatoire (perpendiculaire à la vitesse + Z)
+            const speed = Math.sqrt(d.vx*d.vx + d.vy*d.vy);
+            if (speed > 0.1) {
+                // Vecteur perpendiculaire à la vitesse (virage)
+                const perpX = -d.vy / speed;
+                const perpY = d.vx / speed;
+                
+                // Intensité aléatoire (0.5g à 2g)
+                const intensity = (0.5 + Math.random() * 1.5) * g;
+                const sign = Math.random() > 0.5 ? 1 : -1;
+                
+                d.maneuverAccel.x = perpX * intensity * sign;
+                d.maneuverAccel.y = perpY * intensity * sign;
+                d.maneuverAccel.z = (Math.random() - 0.5) * intensity; // Variation altitude
+                
+                d.maneuverEnd = sim.time + maneuverDuration;
+            }
+        }
+        
+        // Fin de manœuvre → décélération
+        if (sim.time > d.maneuverEnd) {
+            d.maneuverAccel.x *= 0.9;
+            d.maneuverAccel.y *= 0.9;
+            d.maneuverAccel.z *= 0.9;
+        }
+        
+        // Appliquer l'accélération de manœuvre
+        d.vx += d.maneuverAccel.x * dt;
+        d.vy += d.maneuverAccel.y * dt;
+        d.vz += d.maneuverAccel.z * dt;
+        
+        // Tendance vers le centre (évite de sortir)
+        const distXY = Math.sqrt(d.x*d.x + d.y*d.y);
+        if (distXY > BUBBLE_RADIUS * 0.6) {
+            const pullStrength = 2.0 * (distXY / BUBBLE_RADIUS);
+            d.vx -= (d.x / distXY) * pullStrength * dt;
+            d.vy -= (d.y / distXY) * pullStrength * dt;
+        }
+        
+        // Limiter la vitesse max
+        const currentSpeed = Math.sqrt(d.vx*d.vx + d.vy*d.vy + d.vz*d.vz);
+        const maxSpeed = d.speed * 1.5; // 50% au-dessus de la vitesse nominale max
+        if (currentSpeed > maxSpeed) {
+            const scale = maxSpeed / currentSpeed;
+            d.vx *= scale;
+            d.vy *= scale;
+            d.vz *= scale;
+        }
+        
+        // Mise à jour position
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        d.z += d.vz * dt;
+        
+        // Rebond bulle (sécurité)
+        if (distXY > BUBBLE_RADIUS) {
+            const nx = -d.x/distXY, ny = -d.y/distXY;
+            const vn = d.vx*nx + d.vy*ny;
+            d.vx -= 2*vn*nx; 
+            d.vy -= 2*vn*ny;
+            d.x = d.x / distXY * (BUBBLE_RADIUS - 1);
+            d.y = d.y / distXY * (BUBBLE_RADIUS - 1);
+        }
+        
+        // Rebond altitude
+        if (d.z < 15) { d.z = 15; d.vz = Math.abs(d.vz)*0.8; }
+        if (d.z > 80) { d.z = 80; d.vz = -Math.abs(d.vz)*0.8; }
+    }
+    
+    function updateTraces() {
+        const t = sim.time;
+        if (!sim.fireControl.droneDestroyed) {
+            sim.traceReal.push({ x: sim.drone.x, y: sim.drone.y, z: sim.drone.z, t });
+        }
+        const e = sim.est;
+        sim.traceEst.push({ x: e.distance*Math.cos(e.azimuth)*Math.cos(e.elevation), y: e.distance*Math.sin(e.azimuth)*Math.cos(e.elevation), z: e.distance*Math.sin(e.elevation), t });
+        
+        const cutoff = t - TRACE_DURATION;
+        sim.traceReal = sim.traceReal.filter(p => p.t > cutoff);
+        sim.traceEst = sim.traceEst.filter(p => p.t > cutoff);
+    }
+    
+    // ============================================================
+    // DESSIN
+    // ============================================================
+    function draw() {
+        drawMapOverlay();
+        drawSide();
+        drawCamera();
+        drawReticle();
+    }
+    
+    function drawMapOverlay() {
+        const w = mapOverlay.width, h = mapOverlay.height;
+        ctxMap.clearRect(0, 0, w, h);
+        if (!map) return;
+        
+        function toPixel(lat, lon) {
+            const p = map.latLngToContainerPoint([lat, lon]);
+            return { x: p.x, y: p.y };
+        }
+        
+        // =====================================================
+        // BULLE DE DÉTECTION ACOUSTIQUE (forme selon vent)
+        // =====================================================
+        if (ACOUSTIC.detectionBubble.length > 0) {
+            const centerPx = toPixel(rxLat, rxLon);
+            
+            // Conversion mètres → pixels
+            const testPoint = metersToLatLon(1, 0);
+            const testPx = toPixel(testPoint.lat, testPoint.lon);
+            const pixelsPerMeter = Math.sqrt((testPx.x - centerPx.x)**2 + (testPx.y - centerPx.y)**2);
+            
+            const bubble = ACOUSTIC.detectionBubble;
+            
+            // Dessiner la zone de détection
+            ctxMap.beginPath();
+            const firstPx = {
+                x: centerPx.x + bubble[0].x * pixelsPerMeter,
+                y: centerPx.y - bubble[0].y * pixelsPerMeter
+            };
+            ctxMap.moveTo(firstPx.x, firstPx.y);
+            
+            for (let i = 1; i < bubble.length; i++) {
+                const px = centerPx.x + bubble[i].x * pixelsPerMeter;
+                const py = centerPx.y - bubble[i].y * pixelsPerMeter;
+                ctxMap.lineTo(px, py);
+            }
+            ctxMap.closePath();
+            
+            // Remplissage gradient
+            const maxRange = Math.max(...bubble.map(p => p.range));
+            const gradient = ctxMap.createRadialGradient(
+                centerPx.x, centerPx.y, 0,
+                centerPx.x, centerPx.y, maxRange * pixelsPerMeter
+            );
+            gradient.addColorStop(0, 'rgba(138, 43, 226, 0.12)');
+            gradient.addColorStop(0.7, 'rgba(138, 43, 226, 0.06)');
+            gradient.addColorStop(1, 'rgba(138, 43, 226, 0.02)');
+            
+            ctxMap.fillStyle = gradient;
+            ctxMap.fill();
+            
+            // Contour
+            ctxMap.strokeStyle = 'rgba(138, 43, 226, 0.4)';
+            ctxMap.lineWidth = 2;
+            ctxMap.setLineDash([5, 5]);
+            ctxMap.stroke();
+            ctxMap.setLineDash([]);
+        }
+        
+        // Traces
+        [{ trace: sim.traceReal, color: 'rgba(255,59,59,0.6)' }, { trace: sim.traceEst, color: 'rgba(0,255,136,0.6)' }].forEach(({ trace, color }) => {
+            if (trace.length < 2) return;
+            for (let i = 1; i < trace.length; i++) {
+                const alpha = Math.max(0.1, 1 - (sim.time - trace[i].t)/TRACE_DURATION);
+                const ll0 = metersToLatLon(trace[i-1].x, trace[i-1].y);
+                const ll1 = metersToLatLon(trace[i].x, trace[i].y);
+                const p0 = toPixel(ll0.lat, ll0.lon), p1 = toPixel(ll1.lat, ll1.lon);
+                ctxMap.strokeStyle = color.replace(/[\d.]+\)$/, (alpha*0.8).toFixed(2)+')');
+                ctxMap.lineWidth = 3;
+                ctxMap.beginPath(); ctxMap.moveTo(p0.x, p0.y); ctxMap.lineTo(p1.x, p1.y); ctxMap.stroke();
+            }
+        });
+        
+        // Position réelle
+        if (!sim.fireControl.droneDestroyed) {
+            const droneLL = metersToLatLon(sim.drone.x, sim.drone.y);
+            const dp = toPixel(droneLL.lat, droneLL.lon);
+            ctxMap.fillStyle = 'rgba(255,59,59,0.3)';
+            ctxMap.beginPath(); ctxMap.arc(dp.x, dp.y, 10, 0, 2*Math.PI); ctxMap.fill();
+            ctxMap.fillStyle = '#ff3b3b';
+            ctxMap.beginPath(); ctxMap.arc(dp.x, dp.y, 5, 0, 2*Math.PI); ctxMap.fill();
+        }
+        
+        // Position estimée
+        const e = sim.est;
+        const estX = e.distance*Math.cos(e.azimuth)*Math.cos(e.elevation);
+        const estY = e.distance*Math.sin(e.azimuth)*Math.cos(e.elevation);
+        const estLL = metersToLatLon(estX, estY);
+        const ep = toPixel(estLL.lat, estLL.lon);
+        
+        // =====================================================
+        // ELLIPSE DE CONFIANCE (cohérence géométrique)
+        // =====================================================
+        if (COHERENCE.enabled && COHERENCE.confidenceEllipse) {
+            const ell = COHERENCE.confidenceEllipse;
+            const ellCenter = metersToLatLon(ell.centerX, ell.centerY);
+            const centerPx = toPixel(ellCenter.lat, ellCenter.lon);
+            
+            // Conversion des rayons en pixels (approximation locale)
+            const testPoint = metersToLatLon(ell.centerX + 1, ell.centerY);
+            const testPx = toPixel(testPoint.lat, testPoint.lon);
+            const pixelsPerMeter = Math.sqrt((testPx.x - centerPx.x)**2 + (testPx.y - centerPx.y)**2);
+            
+            const radiusXpx = Math.max(5, Math.min(100, ell.radiusX * pixelsPerMeter));
+            const radiusYpx = Math.max(5, Math.min(100, ell.radiusY * pixelsPerMeter));
+            
+            ctxMap.save();
+            ctxMap.translate(centerPx.x, centerPx.y);
+            ctxMap.rotate(-ell.angle); // Négatif car Y inversé
+            
+            // Couleur selon cohérence
+            const coherence = e.coherence || 100;
+            let ellColor;
+            if (coherence > 70) {
+                ellColor = 'rgba(0, 255, 136, 0.3)';
+            } else if (coherence > 40) {
+                ellColor = 'rgba(255, 215, 0, 0.3)';
+            } else {
+                ellColor = 'rgba(255, 59, 59, 0.4)';
+            }
+            
+            ctxMap.fillStyle = ellColor;
+            ctxMap.beginPath();
+            ctxMap.ellipse(0, 0, radiusXpx, radiusYpx, 0, 0, 2 * Math.PI);
+            ctxMap.fill();
+            
+            // Contour
+            ctxMap.strokeStyle = ellColor.replace('0.3', '0.8').replace('0.4', '0.9');
+            ctxMap.lineWidth = 1;
+            ctxMap.stroke();
+            
+            ctxMap.restore();
+        }
+        
+        // =====================================================
+        // FLÈCHE DE VENT sur la carte
+        // =====================================================
+        if (WIND_CONFIG.enabled) {
+            const wind = getWindVector(50); // Vent à 50m
+            const centerPx = toPixel(rxLat, rxLon);
+            
+            // Position de la flèche (coin supérieur droit de la carte)
+            const arrowX = w - 40;
+            const arrowY = 40;
+            
+            // Taille proportionnelle à la vitesse
+            const arrowLen = 15 + wind.speedKmh * 0.3;
+            const dirRad = WIND_CONFIG.currentDirection * Math.PI / 180;
+            
+            // Fond
+            ctxMap.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctxMap.beginPath();
+            ctxMap.arc(arrowX, arrowY, 25, 0, 2 * Math.PI);
+            ctxMap.fill();
+            
+            // Flèche
+            const tipX = arrowX + Math.sin(dirRad) * arrowLen;
+            const tipY = arrowY - Math.cos(dirRad) * arrowLen;
+            const tailX = arrowX - Math.sin(dirRad) * arrowLen * 0.5;
+            const tailY = arrowY + Math.cos(dirRad) * arrowLen * 0.5;
+            
+            ctxMap.strokeStyle = WIND_CONFIG.isGusting ? '#ff3b3b' : '#00bfff';
+            ctxMap.lineWidth = 2;
+            ctxMap.beginPath();
+            ctxMap.moveTo(tailX, tailY);
+            ctxMap.lineTo(tipX, tipY);
+            ctxMap.stroke();
+            
+            // Pointe
+            const headLen = 6;
+            const headAngle = Math.PI / 6;
+            ctxMap.beginPath();
+            ctxMap.moveTo(tipX, tipY);
+            ctxMap.lineTo(
+                tipX - headLen * Math.sin(dirRad - headAngle),
+                tipY + headLen * Math.cos(dirRad - headAngle)
+            );
+            ctxMap.moveTo(tipX, tipY);
+            ctxMap.lineTo(
+                tipX - headLen * Math.sin(dirRad + headAngle),
+                tipY + headLen * Math.cos(dirRad + headAngle)
+            );
+            ctxMap.stroke();
+            
+            // Texte vitesse
+            ctxMap.fillStyle = '#00bfff';
+            ctxMap.font = '8px Courier New';
+            ctxMap.textAlign = 'center';
+            ctxMap.fillText(wind.speedKmh.toFixed(0) + ' km/h', arrowX, arrowY + 32);
+        }
+        
+        ctxMap.fillStyle = 'rgba(0,255,136,0.3)';
+        ctxMap.beginPath(); ctxMap.arc(ep.x, ep.y, 10, 0, 2*Math.PI); ctxMap.fill();
+        ctxMap.fillStyle = '#00ff88';
+        ctxMap.beginPath(); ctxMap.arc(ep.x, ep.y, 5, 0, 2*Math.PI); ctxMap.fill();
+    }
+    
+    function drawSide() {
+        const w = canvasSide.width, h = canvasSide.height;
+        const cx = w/2, cy = h*0.85;
+        const scale = Math.min(w, h*0.75) / (BUBBLE_RADIUS*2.4);
+        
+        ctxSide.fillStyle = '#0a0e14';
+        ctxSide.fillRect(0, 0, w, h);
+        
+        // Sol
+        ctxSide.strokeStyle = 'rgba(0,212,255,0.3)';
+        ctxSide.lineWidth = 1;
+        ctxSide.beginPath(); ctxSide.moveTo(0, cy); ctxSide.lineTo(w, cy); ctxSide.stroke();
+        
+        // Handover zone
+        ctxSide.strokeStyle = 'rgba(255,0,255,0.3)';
+        ctxSide.setLineDash([3,3]);
+        ctxSide.beginPath();
+        ctxSide.moveTo(cx - HANDOVER_DISTANCE*scale, cy);
+        ctxSide.lineTo(cx - HANDOVER_DISTANCE*scale, cy - 80*scale);
+        ctxSide.moveTo(cx + HANDOVER_DISTANCE*scale, cy);
+        ctxSide.lineTo(cx + HANDOVER_DISTANCE*scale, cy - 80*scale);
+        ctxSide.stroke();
+        ctxSide.setLineDash([]);
+        
+        // Capteur
+        ctxSide.fillStyle = '#8b5cf6';
+        ctxSide.beginPath(); ctxSide.arc(cx, cy, 4, 0, 2*Math.PI); ctxSide.fill();
+        
+        // Traces
+        [{ trace: sim.traceReal, color: '#ff3b3b' }, { trace: sim.traceEst, color: '#00ff88' }].forEach(({ trace, color }) => {
+            if (trace.length < 2) return;
+            for (let i = 1; i < trace.length; i++) {
+                const alpha = Math.max(0.1, 1 - (sim.time - trace[i].t)/TRACE_DURATION);
+                ctxSide.strokeStyle = hexToRgba(color, alpha*0.6);
+                ctxSide.lineWidth = 2;
+                ctxSide.beginPath();
+                ctxSide.moveTo(cx + trace[i-1].x*scale, cy - trace[i-1].z*scale);
+                ctxSide.lineTo(cx + trace[i].x*scale, cy - trace[i].z*scale);
+                ctxSide.stroke();
+            }
+        });
+        
+        // Positions
+        if (!sim.fireControl.droneDestroyed) {
+            ctxSide.fillStyle = '#ff3b3b';
+            ctxSide.beginPath(); ctxSide.arc(cx + sim.drone.x*scale, cy - sim.drone.z*scale, 4, 0, 2*Math.PI); ctxSide.fill();
+        }
+        
+        const e = sim.est;
+        ctxSide.fillStyle = '#00ff88';
+        ctxSide.beginPath(); ctxSide.arc(cx + e.distance*Math.cos(e.azimuth)*scale, cy - e.distance*Math.sin(e.elevation)*scale, 4, 0, 2*Math.PI); ctxSide.fill();
+    }
+    
+    function drawCamera() {
+        const w = canvasCamera.width, h = canvasCamera.height;
+        const cx = w/2, cy = h/2;
+        const fc = sim.fireControl;
+        const e = sim.est;
+        
+        // =====================================================
+        // CAMÉRA TOUJOURS ACTIVE - Suit le point VERT (estimé)
+        // =====================================================
+        
+        // Fond - plus sombre hors engagement
+        const inEngagement = fc.mode === 'camera';
+        ctxCamera.fillStyle = inEngagement ? '#0a0a14' : '#08080c';
+        ctxCamera.fillRect(0, 0, w, h);
+        
+        const panel = document.getElementById('cameraPanel');
+        const label = panel.querySelector('.view-label');
+        
+        // Kill confirmed
+        if (fc.droneDestroyed) {
+            label.textContent = 'CAMÉRA - KILL CONFIRMED';
+            panel.classList.add('camera-active');
+            ctxCamera.fillStyle = '#00ff88';
+            ctxCamera.font = 'bold 16px Arial Black';
+            ctxCamera.textAlign = 'center';
+            ctxCamera.fillText('TARGET DOWN', cx, cy - 10);
+            ctxCamera.font = '10px Courier New';
+            ctxCamera.fillText(`Respawn: ${(RESPAWN_DELAY - fc.respawnTimer).toFixed(1)}s`, cx, cy + 15);
+            return;
+        }
+        
+        // Label selon mode
+        if (inEngagement) {
+            panel.classList.add('camera-active');
+            label.textContent = fc.lockOn ? 'CAMÉRA - LOCK ON' : (fc.visualContact ? 'CAMÉRA - TRACKING' : 'CAMÉRA - ACQUISITION');
+        } else {
+            panel.classList.remove('camera-active');
+            label.textContent = `CAMÉRA - VEILLE (${e.distance.toFixed(0)}m)`;
+        }
+        
+        // =====================================================
+        // LA CAMÉRA SUIT TOUJOURS LE POINT VERT (estimé)
+        // =====================================================
+        const estAz = e.azimuth;
+        const estEl = e.elevation;
+        
+        // En mode veille: la caméra suit passivement l'estimé
+        // En mode engagement: updateFireControl gère le tracking actif
+        if (!inEngagement) {
+            // Suivi passif doux vers l'estimé
+            const smoothing = 0.08;
+            let azDiff = estAz - fc.cameraAz;
+            if (azDiff > Math.PI) azDiff -= 2*Math.PI;
+            if (azDiff < -Math.PI) azDiff += 2*Math.PI;
+            
+            fc.cameraAz += azDiff * smoothing;
+            fc.cameraEl += (estEl - fc.cameraEl) * smoothing;
+        }
+        
+        // =====================================================
+        // GRILLE DE FOND
+        // =====================================================
+        ctxCamera.strokeStyle = inEngagement ? 'rgba(0,212,255,0.1)' : 'rgba(0,212,255,0.05)';
+        ctxCamera.lineWidth = 1;
+        for (let i = 0; i < w; i += 25) { 
+            ctxCamera.beginPath(); 
+            ctxCamera.moveTo(i, 0); 
+            ctxCamera.lineTo(i, h); 
+            ctxCamera.stroke(); 
+        }
+        for (let i = 0; i < h; i += 25) { 
+            ctxCamera.beginPath(); 
+            ctxCamera.moveTo(0, i); 
+            ctxCamera.lineTo(w, i); 
+            ctxCamera.stroke(); 
+        }
+        
+        // =====================================================
+        // FOV SCALE - Zoom basé sur distance d'engagement
+        // À 35m, le drone doit avoir une taille significative
+        // =====================================================
+        const engagementDist = HANDOVER_DISTANCE; // 35m
+        const baseFOV = Math.PI/6; // 30° de FOV
+        const fovScale = Math.min(w, h) / baseFOV;
+        
+        // =====================================================
+        // DRONE RÉEL (ROUGE) - Position dans le FOV
+        // =====================================================
+        const realDist = magnitude(sim.drone);
+        const realAz = Math.atan2(sim.drone.y, sim.drone.x);
+        const realEl = Math.asin(sim.drone.z / Math.max(realDist, EPSILON_DISTANCE));
+        
+        let azOffReal = realAz - fc.cameraAz;
+        if (azOffReal > Math.PI) azOffReal -= 2*Math.PI;
+        if (azOffReal < -Math.PI) azOffReal += 2*Math.PI;
+        const elOffReal = realEl - fc.cameraEl;
+        
+        const droneScreenX = cx + azOffReal * fovScale;
+        const droneScreenY = cy - elOffReal * fovScale;
+        
+        // Taille du drone selon distance (plus proche = plus grand)
+        // À 35m → taille ~20px, à 150m → taille ~5px
+        const sizeReal = Math.max(5, Math.min(30, engagementDist / realDist * 15));
+        
+        // Vérifier si dans le FOV élargi (±45°) pour affichage hors champ
+        const inFOV = Math.abs(azOffReal) < baseFOV && Math.abs(elOffReal) < baseFOV;
+        const inExtendedFOV = Math.abs(azOffReal) < Math.PI/3 && Math.abs(elOffReal) < Math.PI/3;
+        
+        if (inFOV) {
+            // Drone dans le champ - affichage complet
+            ctxCamera.strokeStyle = inEngagement ? (fc.lockOn ? '#ff00ff' : '#ff3b3b') : '#ff3b3b88';
+            ctxCamera.lineWidth = inEngagement ? 2 : 1;
+            
+            // Croix du drone
+            ctxCamera.beginPath();
+            ctxCamera.moveTo(droneScreenX - sizeReal, droneScreenY);
+            ctxCamera.lineTo(droneScreenX + sizeReal, droneScreenY);
+            ctxCamera.moveTo(droneScreenX, droneScreenY - sizeReal/2);
+            ctxCamera.lineTo(droneScreenX, droneScreenY + sizeReal/2);
+            ctxCamera.stroke();
+            
+            // Cadre de tracking
+            ctxCamera.strokeStyle = inEngagement ? (fc.lockOn ? '#ff00ff' : '#ffff00') : '#ffff0066';
+            ctxCamera.lineWidth = fc.lockOn ? 2 : 1;
+            ctxCamera.strokeRect(
+                droneScreenX - sizeReal - 4, 
+                droneScreenY - sizeReal - 4, 
+                (sizeReal + 4) * 2, 
+                (sizeReal + 4) * 2
+            );
+            
+            // Distance
+            ctxCamera.fillStyle = inEngagement ? '#00d4ff' : '#00d4ff88';
+            ctxCamera.font = '9px Courier New';
+            ctxCamera.textAlign = 'center';
+            ctxCamera.fillText(`${realDist.toFixed(0)}m`, droneScreenX, droneScreenY + sizeReal + 14);
+            
+        } else if (inExtendedFOV) {
+            // Drone hors champ mais proche - indicateur de direction
+            const edgeX = cx + Math.sign(azOffReal) * (w/2 - 15);
+            const edgeY = Math.max(15, Math.min(h - 15, cy - elOffReal * fovScale));
+            
+            ctxCamera.fillStyle = '#ff3b3b66';
+            ctxCamera.beginPath();
+            if (azOffReal > 0) {
+                // Flèche vers la droite
+                ctxCamera.moveTo(edgeX, edgeY);
+                ctxCamera.lineTo(edgeX - 10, edgeY - 6);
+                ctxCamera.lineTo(edgeX - 10, edgeY + 6);
+            } else {
+                // Flèche vers la gauche
+                ctxCamera.moveTo(edgeX, edgeY);
+                ctxCamera.lineTo(edgeX + 10, edgeY - 6);
+                ctxCamera.lineTo(edgeX + 10, edgeY + 6);
+            }
+            ctxCamera.fill();
+            
+            ctxCamera.fillStyle = '#ff3b3b88';
+            ctxCamera.font = '8px Courier New';
+            ctxCamera.textAlign = azOffReal > 0 ? 'right' : 'left';
+            ctxCamera.fillText(`${realDist.toFixed(0)}m`, edgeX + (azOffReal > 0 ? -12 : 12), edgeY + 3);
+        }
+        
+        // =====================================================
+        // POINT VERT (ESTIMÉ) - Petite croix verte
+        // =====================================================
+        let azOffEst = estAz - fc.cameraAz;
+        if (azOffEst > Math.PI) azOffEst -= 2*Math.PI;
+        if (azOffEst < -Math.PI) azOffEst += 2*Math.PI;
+        const elOffEst = estEl - fc.cameraEl;
+        
+        const estScreenX = cx + azOffEst * fovScale;
+        const estScreenY = cy - elOffEst * fovScale;
+        
+        if (Math.abs(azOffEst) < baseFOV && Math.abs(elOffEst) < baseFOV) {
+            ctxCamera.strokeStyle = '#00ff8888';
+            ctxCamera.lineWidth = 1;
+            ctxCamera.beginPath();
+            ctxCamera.moveTo(estScreenX - 6, estScreenY);
+            ctxCamera.lineTo(estScreenX + 6, estScreenY);
+            ctxCamera.moveTo(estScreenX, estScreenY - 6);
+            ctxCamera.lineTo(estScreenX, estScreenY + 6);
+            ctxCamera.stroke();
+            
+            // Petit cercle
+            ctxCamera.beginPath();
+            ctxCamera.arc(estScreenX, estScreenY, 3, 0, 2*Math.PI);
+            ctxCamera.stroke();
+        }
+        
+        // =====================================================
+        // RÉTICULE CENTRAL
+        // =====================================================
+        ctxCamera.strokeStyle = inEngagement ? 'rgba(255,0,255,0.4)' : 'rgba(0,212,255,0.2)';
+        ctxCamera.lineWidth = 1;
+        
+        // Croix centrale fine
+        ctxCamera.beginPath();
+        ctxCamera.moveTo(cx - 20, cy);
+        ctxCamera.lineTo(cx - 5, cy);
+        ctxCamera.moveTo(cx + 5, cy);
+        ctxCamera.lineTo(cx + 20, cy);
+        ctxCamera.moveTo(cx, cy - 20);
+        ctxCamera.lineTo(cx, cy - 5);
+        ctxCamera.moveTo(cx, cy + 5);
+        ctxCamera.lineTo(cx, cy + 20);
+        ctxCamera.stroke();
+        
+        // Cercle de tolérance
+        ctxCamera.beginPath();
+        ctxCamera.arc(cx, cy, 25, 0, 2*Math.PI);
+        ctxCamera.stroke();
+        
+        // =====================================================
+        // HUD - Informations
+        // =====================================================
+        ctxCamera.fillStyle = inEngagement ? '#00d4ff' : '#00d4ff88';
+        ctxCamera.font = '8px Courier New';
+        ctxCamera.textAlign = 'left';
+        ctxCamera.fillText(`AZ: ${(fc.cameraAz * 180/Math.PI).toFixed(1)}°`, 4, 12);
+        ctxCamera.fillText(`EL: ${(fc.cameraEl * 180/Math.PI).toFixed(1)}°`, 4, 22);
+        
+        ctxCamera.textAlign = 'right';
+        ctxCamera.fillText(`RÉEL: ${realDist.toFixed(0)}m`, w-4, 12);
+        ctxCamera.fillText(`EST: ${e.distance.toFixed(0)}m`, w-4, 22);
+        
+        // Indicateur engagement
+        if (!inEngagement) {
+            ctxCamera.fillStyle = '#8b949e';
+            ctxCamera.font = '9px Courier New';
+            ctxCamera.textAlign = 'center';
+            ctxCamera.fillText(`HANDOVER @ ${HANDOVER_DISTANCE}m`, cx, h - 8);
+            
+            // Barre de progression vers engagement
+            const progress = Math.max(0, Math.min(1, (150 - e.distance) / (150 - HANDOVER_DISTANCE)));
+            ctxCamera.fillStyle = '#1a1a24';
+            ctxCamera.fillRect(w/4, h - 22, w/2, 4);
+            ctxCamera.fillStyle = progress > 0.8 ? '#ff3b3b' : '#00d4ff44';
+            ctxCamera.fillRect(w/4, h - 22, w/2 * progress, 4);
+        }
+    }
+    
+    function drawReticle() {
+        const w = canvasReticle.width, h = canvasReticle.height;
+        const cx = w/2, cy = h/2;
+        const fc = sim.fireControl;
+        
+        ctxReticle.fillStyle = '#050508';
+        ctxReticle.fillRect(0, 0, w, h);
+        
+        const panel = document.getElementById('reticlePanel');
+        const label = panel.querySelector('.view-label');
+        
+        if (fc.droneDestroyed) {
+            label.textContent = 'VISEUR - NEUTRALISÉ';
+            ctxReticle.fillStyle = '#00ff88';
+            ctxReticle.font = 'bold 14px Arial Black';
+            ctxReticle.textAlign = 'center';
+            ctxReticle.fillText('KILL', cx, cy);
+            return;
+        }
+        
+        if (fc.mode !== 'camera') {
+            label.textContent = 'VISEUR - STANDBY';
+            ctxReticle.fillStyle = '#1a1a24';
+            ctxReticle.font = '11px Courier New';
+            ctxReticle.textAlign = 'center';
+            ctxReticle.fillText('KHÉOPS ACTIF', cx, cy);
+            return;
+        }
+        
+        label.textContent = fc.lockOn ? 'VISEUR - FIRE' : 'VISEUR - ACQ';
+        
+        const color = fc.lockOn ? '#ff00ff' : (fc.targetCentered ? '#ffff00' : '#00d4ff');
+        
+        ctxReticle.strokeStyle = color;
+        ctxReticle.lineWidth = 1;
+        [15, 30, 45].forEach(r => {
+            ctxReticle.beginPath();
+            ctxReticle.arc(cx, cy, r, 0, 2*Math.PI);
+            ctxReticle.stroke();
+        });
+        
+        ctxReticle.lineWidth = 2;
+        ctxReticle.beginPath();
+        ctxReticle.moveTo(cx - 60, cy); ctxReticle.lineTo(cx - 20, cy);
+        ctxReticle.moveTo(cx + 20, cy); ctxReticle.lineTo(cx + 60, cy);
+        ctxReticle.moveTo(cx, cy - 60); ctxReticle.lineTo(cx, cy - 20);
+        ctxReticle.moveTo(cx, cy + 20); ctxReticle.lineTo(cx, cy + 60);
+        ctxReticle.stroke();
+        
+        if (fc.lockOn) {
+            ctxReticle.fillStyle = '#ff00ff';
+            ctxReticle.beginPath();
+            ctxReticle.arc(cx, cy, 4, 0, 2*Math.PI);
+            ctxReticle.fill();
+        }
+        
+        ctxReticle.fillStyle = color;
+        ctxReticle.font = '8px Courier New';
+        ctxReticle.textAlign = 'left';
+        ctxReticle.fillText(`DST: ${sim.est.distance.toFixed(0)}m`, 4, 12);
+        ctxReticle.textAlign = 'right';
+        ctxReticle.fillText(`TIRS: ${fc.shotsFired}`, w-4, 12);
+        
+        ctxReticle.textAlign = 'center';
+        ctxReticle.font = 'bold 9px Arial Black';
+        ctxReticle.fillText(fc.lockOn ? '🔥 FIRE' : 'TRACKING', cx, h - 8);
+    }
+    
+    // ============================================================
+    // UI
+    // ============================================================
+    function updateUI() {
+        const d = sim.drone, e = sim.est, fc = sim.fireControl;
+        
+        const realDist = magnitude(d);
+        const toRx = normalize({ x: -d.x, y: -d.y, z: -d.z });
+        const realVr = dot({ x: d.vx, y: d.vy, z: d.vz }, toRx);
+        
+        const distErr = Math.abs(realDist - e.distance);
+        const distErrPct = realDist > 0 ? distErr / realDist * 100 : 0;
+        
+        const estX = e.distance * Math.cos(e.azimuth) * Math.cos(e.elevation);
+        const estY = e.distance * Math.sin(e.azimuth) * Math.cos(e.elevation);
+        const estZ = e.distance * Math.sin(e.elevation);
+        const estGPS = metersToLatLon(estX, estY);
+        
+        document.getElementById('simTime').textContent = sim.time.toFixed(2);
+        
+        document.getElementById('fireLat').textContent = estGPS.lat.toFixed(6);
+        document.getElementById('fireLon').textContent = estGPS.lon.toFixed(6);
+        document.getElementById('fireAlt').textContent = estZ.toFixed(1);
+        document.getElementById('fireDist').textContent = e.distance.toFixed(1);
+        
+        document.getElementById('realDistance').textContent = realDist.toFixed(1);
+        document.getElementById('estDistance').textContent = e.distance.toFixed(1);
+        document.getElementById('distanceError').textContent = distErr.toFixed(1);
+        document.getElementById('distanceErrorPct').textContent = distErrPct.toFixed(1);
+        
+        // Erreur Position 3D (distance euclidienne entre position estimée et réelle)
+        const posErr3D = Math.sqrt((e.x - d.x)**2 + (e.y - d.y)**2 + (e.z - d.z)**2);
+        document.getElementById('posError3D').textContent = posErr3D.toFixed(2);
+        
+        // Doppler UI
+        const vRadEl = document.getElementById('vRadialValue');
+        vRadEl.innerHTML = `<span style="color: ${e.dopplerIntegrating ? 'var(--accent-green)' : 'var(--accent-red)'}">${e.radialVelocity.toFixed(2)}</span><span class="unit">m/s</span>`;
+        
+        document.getElementById('integrationStatus').innerHTML = e.dopplerIntegrating ? 
+            '<span style="color: var(--accent-green)">ACTIVE</span>' : 
+            '<span style="color: var(--accent-red)">PAUSE</span>';
+        
+        document.getElementById('soundSpeedDisplay').textContent = SPEED_OF_SOUND.toFixed(1);
+        
+        document.getElementById('dopplerLabel').textContent = e.radialVelocity.toFixed(1) + ' m/s';
+        
+        // Barre Doppler
+        const dopplerFill = document.getElementById('dopplerFill');
+        const maxVr = 20;
+        const normalizedVr = (e.radialVelocity + maxVr) / (2 * maxVr); // 0-1
+        const fillWidth = Math.max(0, Math.min(100, normalizedVr * 100));
+        dopplerFill.style.width = fillWidth + '%';
+        dopplerFill.style.background = e.radialVelocity > 0 ? 'var(--accent-green)' : 'var(--accent-cyan)';
+        dopplerFill.style.marginLeft = e.radialVelocity > 0 ? '50%' : (fillWidth) + '%';
+        dopplerFill.style.width = Math.abs(e.radialVelocity) / maxVr * 50 + '%';
+        
+        // Handover
+        document.getElementById('hoverKheops').classList.toggle('active', fc.mode === 'kheops');
+        document.getElementById('hoverCamera').classList.toggle('active', fc.mode === 'camera');
+        
+        // Stats
+        document.getElementById('killCount').textContent = sim.stats.totalKills;
+        document.getElementById('totalShots').textContent = sim.stats.totalShots;
+        const acc = sim.stats.totalShots > 0 ? (sim.stats.totalKills / sim.stats.totalShots * 100).toFixed(0) : '--';
+        document.getElementById('accuracy').textContent = acc + '%';
+        
+        // Fire assessment
+        const fa = document.getElementById('fireAssessment');
+        
+        if (fc.droneDestroyed) {
+            fa.className = 'fire-assessment fire-go';
+            fa.innerHTML = `<div class="fire-status">NEUTRALISÉ</div><div class="fire-details">Respawn: ${(RESPAWN_DELAY - fc.respawnTimer).toFixed(1)}s</div>`;
+        } else if (fc.mode === 'camera' && fc.lockOn) {
+            fa.className = 'fire-assessment fire-engaged';
+            fa.innerHTML = `<div class="fire-status">🔥 ENGAGED</div><div class="fire-details">Tir auto actif</div>`;
+        } else if (fc.mode === 'camera') {
+            fa.className = 'fire-assessment fire-no-go';
+            fa.innerHTML = `<div class="fire-status">TRACKING</div><div class="fire-details">Acquisition...</div>`;
+        } else {
+            fa.className = 'fire-assessment fire-no-go';
+            fa.innerHTML = `<div class="fire-status">KHÉOPS</div><div class="fire-details">Handover < ${HANDOVER_DISTANCE}m</div>`;
+        }
+        
+        // Status
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        if (fc.droneDestroyed) {
+            statusDot.style.background = '#00ff88';
+            statusText.textContent = 'KILL';
+        } else if (fc.mode === 'camera') {
+            statusDot.style.background = '#ff00ff';
+            statusText.textContent = sim.timeScale < 1 ? 'SLOWMO' : 'CAMERA';
+        } else {
+            statusDot.style.background = '#00ff88';
+            statusText.textContent = 'KHÉOPS';
+        }
+        
+        // ISO 9613-1 Diagnostics
+        updateISODisplay();
+    }
+    
+    /**
+     * Mise à jour de l'affichage des paramètres ISO 9613-1
+     */
+    function updateISODisplay() {
+        const details = calculateSpeedOfSoundDetailed(TEMPERATURE, HUMIDITY, PRESSURE, CO2_FRACTION);
+        
+        // Pression de vapeur saturante
+        document.getElementById('isoPsat').textContent = details.saturationPressure_Pa.toFixed(1);
+        
+        // Facteur d'augmentation
+        document.getElementById('isoEnhancement').textContent = details.enhancementFactor.toFixed(6);
+        
+        // Fraction molaire H2O (notation scientifique si petit)
+        const xwDisplay = details.molarFractionH2O < 0.001 
+            ? details.molarFractionH2O.toExponential(3) 
+            : details.molarFractionH2O.toFixed(5);
+        document.getElementById('isoXw').textContent = xwDisplay;
+        
+        // Fraction molaire CO2
+        document.getElementById('isoXc').textContent = (details.molarFractionCO2 * 1e6).toFixed(0) + ' ppm';
+        
+        // Masse molaire (convertir kg/mol vers g/mol)
+        document.getElementById('isoM').textContent = (details.molarMass_kgmol * 1000).toFixed(4);
+        
+        // Gamma
+        document.getElementById('isoGamma').textContent = details.gammaRatio.toFixed(5);
+        
+        // Comparaison ISO vs Cramer
+        const cISO = details.speedOfSound_ISO.toFixed(3);
+        const cCramer = details.speedOfSound_Cramer.toFixed(3);
+        const delta = details.deviation_ms.toFixed(4);
+        document.getElementById('isoComparison').innerHTML = 
+            `${cISO} vs ${cCramer} <span style="color: var(--accent-yellow);">(Δ${delta})</span>`;
+        
+        // Mise à jour affichage VENT
+        updateWindDisplay();
+        
+        // Mise à jour affichage COHÉRENCE
+        updateCoherenceDisplay();
+        
+        // Mise à jour affichage ACOUSTIQUE
+        updateAcousticDisplay();
+    }
+    
+    /**
+     * Mise à jour affichage du panneau VENT
+     */
+    function updateWindDisplay() {
+        const cfg = WIND_CONFIG;
+        
+        document.getElementById('windSpeed').textContent = cfg.currentSpeed.toFixed(1);
+        document.getElementById('windDirection').textContent = cfg.currentDirection.toFixed(0);
+        
+        // Status
+        const statusEl = document.getElementById('windStatus');
+        if (!cfg.enabled) {
+            statusEl.innerHTML = '<span style="color: var(--text-secondary);">DÉSACTIVÉ</span>';
+        } else if (cfg.isGusting) {
+            statusEl.innerHTML = '<span style="color: var(--accent-red); animation: blink 0.3s infinite;">🌬️ RAFALE</span>';
+        } else {
+            statusEl.innerHTML = '<span style="color: var(--accent-green);">NORMAL</span>';
+        }
+        
+        // Rose des vents
+        drawWindRose();
+    }
+    
+    /**
+     * Dessiner la mini rose des vents
+     */
+    function drawWindRose() {
+        const canvas = document.getElementById('windRose');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width, h = canvas.height;
+        const cx = w/2, cy = h/2, r = Math.min(w, h) / 2 - 4;
+        
+        ctx.clearRect(0, 0, w, h);
+        
+        // Cercle de fond
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0, 191, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        // Points cardinaux
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.font = '8px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('N', cx, cy - r + 6);
+        ctx.fillText('S', cx, cy + r - 6);
+        ctx.fillText('E', cx + r - 6, cy);
+        ctx.fillText('W', cx - r + 6, cy);
+        
+        // Flèche de vent (direction d'où il vient)
+        const dirRad = WIND_CONFIG.currentDirection * Math.PI / 180;
+        const arrowLen = r * 0.7 * Math.min(1, WIND_CONFIG.currentSpeed / 50);
+        
+        // Pointe de la flèche (d'où vient le vent)
+        const tipX = cx + Math.sin(dirRad) * arrowLen;
+        const tipY = cy - Math.cos(dirRad) * arrowLen;
+        
+        // Queue
+        const tailX = cx - Math.sin(dirRad) * arrowLen * 0.3;
+        const tailY = cy + Math.cos(dirRad) * arrowLen * 0.3;
+        
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(tipX, tipY);
+        ctx.strokeStyle = WIND_CONFIG.isGusting ? '#ff3b3b' : '#00bfff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Pointe
+        const headLen = 6;
+        const headAngle = Math.PI / 6;
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(
+            tipX - headLen * Math.sin(dirRad - headAngle),
+            tipY + headLen * Math.cos(dirRad - headAngle)
+        );
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(
+            tipX - headLen * Math.sin(dirRad + headAngle),
+            tipY + headLen * Math.cos(dirRad + headAngle)
+        );
+        ctx.stroke();
+    }
+    
+    /**
+     * Mise à jour affichage du panneau COHÉRENCE
+     */
+    function updateCoherenceDisplay() {
+        const e = sim.est;
+        const coh = COHERENCE;
+        
+        // Indice de cohérence
+        const indexEl = document.getElementById('coherenceIndex');
+        const coherence = e.coherence || 100;
+        indexEl.textContent = coherence.toFixed(0);
+        
+        // Couleur selon niveau
+        if (coherence > 70) {
+            indexEl.style.color = 'var(--accent-green)';
+        } else if (coherence > 40) {
+            indexEl.style.color = 'var(--accent-yellow)';
+        } else {
+            indexEl.style.color = 'var(--accent-red)';
+        }
+        
+        // Dispersion
+        document.getElementById('coherenceDispersion').textContent = (e.dispersion || 0).toFixed(2);
+        
+        // Nombre de solutions
+        document.getElementById('coherenceSolutions').textContent = coh.solutions ? coh.solutions.length : '--';
+        
+        // Barre de cohérence
+        const bar = document.getElementById('coherenceBar');
+        bar.style.width = coherence + '%';
+        
+        // Alerte rafale
+        const alertEl = document.getElementById('gustAlert');
+        if (WIND_CONFIG.isGusting || coherence < 30) {
+            alertEl.style.display = 'block';
+        } else {
+            alertEl.style.display = 'none';
+        }
+        
+        // Alerte zone zénithale
+        const zenithAlert = document.getElementById('zenithAlert');
+        if (e.isZenith) {
+            zenithAlert.style.display = 'block';
+        } else {
+            zenithAlert.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Contrôles UI pour le vent
+     */
+    function toggleWind(enabled) {
+        WIND_CONFIG.enabled = enabled;
+    }
+    
+    function updateWindBase(v) {
+        WIND_CONFIG.baseSpeed = parseFloat(v);
+        WIND_CONFIG.currentSpeed = parseFloat(v);
+        document.getElementById('windBaseDisplay').textContent = v + ' km/h';
+    }
+    
+    function updateWindDirection(v) {
+        WIND_CONFIG.baseDirection = parseFloat(v);
+        WIND_CONFIG.currentDirection = parseFloat(v);
+        WIND_CONFIG.targetDirection = parseFloat(v);
+        document.getElementById('windDirDisplay').textContent = v + '°';
+    }
+    
+    /**
+     * Contrôles UI pour la cohérence
+     */
+    function toggleCoherence(enabled) {
+        COHERENCE.enabled = enabled;
+    }
+    
+    /**
+     * Mise à jour affichage du panneau ACOUSTIQUE
+     */
+    function updateAcousticDisplay() {
+        // Calculer SNR actuel
+        const snrInfo = calculateSNR(sim.drone);
+        
+        // Calculer la bulle de détection
+        calculateDetectionBubble();
+        
+        // Afficher SNR
+        const snrEl = document.getElementById('snrValue');
+        snrEl.textContent = snrInfo.SNR.toFixed(1);
+        
+        // Couleur selon SNR
+        if (snrInfo.SNR >= 15) {
+            snrEl.style.color = 'var(--accent-green)';
+        } else if (snrInfo.SNR >= ACOUSTIC.detectionThreshold) {
+            snrEl.style.color = 'var(--accent-yellow)';
+        } else {
+            snrEl.style.color = 'var(--accent-red)';
+        }
+        
+        // Niveau reçu et bruit de fond
+        document.getElementById('receivedLevel').textContent = snrInfo.receivedLevel.toFixed(1);
+        document.getElementById('backgroundNoise').textContent = ACOUSTIC.backgroundNoise.toFixed(0);
+        
+        // Portée max (moyenne de la bulle)
+        if (ACOUSTIC.detectionBubble.length > 0) {
+            const maxRange = Math.max(...ACOUSTIC.detectionBubble.map(p => p.range));
+            document.getElementById('maxRange').textContent = maxRange.toFixed(0);
+        }
+        
+        // Barre SNR (normaliser sur -10 à +40 dB)
+        const snrBar = document.getElementById('snrBar');
+        const snrPct = Math.max(0, Math.min(100, (snrInfo.SNR + 10) / 50 * 100));
+        snrBar.style.width = snrPct + '%';
+        
+        // Couleur de la barre
+        if (snrInfo.SNR < ACOUSTIC.detectionThreshold) {
+            snrBar.style.background = 'var(--accent-red)';
+        } else if (snrInfo.SNR < 15) {
+            snrBar.style.background = 'linear-gradient(90deg, var(--accent-yellow), var(--accent-orange))';
+        } else {
+            snrBar.style.background = 'linear-gradient(90deg, #8a2be2, var(--accent-green))';
+        }
+        
+        // Alerte Signal Perdu
+        const signalAlert = document.getElementById('signalLostAlert');
+        if (sim.est.signalLost) {
+            signalAlert.style.display = 'block';
+        } else {
+            signalAlert.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Mise à jour du type de drone
+     */
+    function updateDroneType(type) {
+        ACOUSTIC.droneType = type;
+        document.getElementById('droneTypeDisplay').textContent = DRONE_TYPES[type].name;
+    }
+    
+    /**
+     * Mise à jour du terrain (bruit de fond)
+     */
+    function updateTerrain(type) {
+        ACOUSTIC.terrainType = type;
+        ACOUSTIC.backgroundNoise = TERRAIN_TYPES[type].noise;
+        document.getElementById('terrainDisplay').textContent = TERRAIN_TYPES[type].name;
+    }
+    
+    // ============================================================
+    // LOOP
+    // ============================================================
+    function step() {
+        if (!sim.running) return;
+        
+        const dt = BASE_DT * sim.timeScale;
+        sim.time += dt;
+        
+        // Mise à jour du vent (perturbateur)
+        updateWind(dt);
+        
+        updateDrone();
+        updateEstimator();
+        updateFireControl();
+        updateTraces();
+        updateUI();
+        draw();
+        
+        animationId = requestAnimationFrame(step);
+    }
+    
+    // ============================================================
+    // CONTROLS
+    // ============================================================
+    function toggleSimulation() {
+        sim.running = !sim.running;
+        document.getElementById('startBtn').textContent = sim.running ? '⏸ PAUSE' : '▶ START';
+        if (sim.running) step();
+        else if (animationId) cancelAnimationFrame(animationId);
+    }
+    
+    function resetSimulation() {
+        sim.running = false;
+        if (animationId) cancelAnimationFrame(animationId);
+        sim.time = 0;
+        spawnDrone();
+        document.getElementById('startBtn').textContent = '▶ START';
+        document.getElementById('slowmoIndicator').style.display = 'none';
+        if (map) map.setView([rxLat, rxLon], 17);
+        updateUI();
+        draw();
+    }
+    
+    function resetStats() {
+        sim.stats.totalKills = 0;
+        sim.stats.totalShots = 0;
+        updateUI();
+    }
+    
+    function updateHandover(v) {
+        HANDOVER_DISTANCE = parseFloat(v);
+        document.getElementById('handoverDisplay').textContent = v + ' m';
+        // Mettre à jour le cercle violet sur la carte
+        if (handoverCircle) {
+            handoverCircle.setRadius(HANDOVER_DISTANCE);
+        }
+    }
+    
+    function updateSpeed(v) {
+        const newSpeed = parseFloat(v);
+        const d = sim.drone;
+        const curr = magnitude({ x: d.vx, y: d.vy, z: d.vz });
+        // Protection EPSILON contre division par zéro
+        const safeCurr = Math.max(curr, EPSILON_VELOCITY);
+        if (curr > EPSILON_VELOCITY) {
+            const f = newSpeed / safeCurr;
+            d.vx *= f; d.vy *= f;
+        } else {
+            // Drone statique: initialiser une direction arbitraire
+            const angle = Math.atan2(d.y, d.x) + Math.PI; // Vers le centre
+            d.vx = newSpeed * Math.cos(angle);
+            d.vy = newSpeed * Math.sin(angle);
+        }
+        d.speed = newSpeed;
+        document.getElementById('speedDisplay').textContent = v + ' m/s';
+    }
+    
+    function updateSpread(v) {
+        SHOTGUN_SPREAD = parseFloat(v);
+        document.getElementById('spreadDisplay').textContent = v + ' m';
+    }
+    
+    function updateRespawn(v) {
+        RESPAWN_DELAY = parseFloat(v);
+        document.getElementById('respawnDisplay').textContent = v + ' s';
+    }
+    
+    function updateTemperature(v) {
+        TEMPERATURE = parseFloat(v);
+        SPEED_OF_SOUND = calculateSpeedOfSound(TEMPERATURE, HUMIDITY);
+        document.getElementById('tempDisplay').textContent = v + ' °C';
+    }
+    
+    function updateHumidity(v) {
+        HUMIDITY = parseFloat(v);
+        SPEED_OF_SOUND = calculateSpeedOfSound(TEMPERATURE, HUMIDITY);
+        document.getElementById('humidityDisplay').textContent = v + ' %';
+    }
+    
+    function updatePressure(v) {
+        PRESSURE = parseFloat(v);
+        SPEED_OF_SOUND = calculateSpeedOfSound(TEMPERATURE, HUMIDITY);
+        document.getElementById('pressureDisplay').textContent = v + ' hPa';
+    }
+    
+    function updateCO2(v) {
+        CO2_FRACTION = parseFloat(v) / 1000000; // ppm vers fraction
+        SPEED_OF_SOUND = calculateSpeedOfSound(TEMPERATURE, HUMIDITY);
+        document.getElementById('co2Display').textContent = v + ' ppm';
+    }
+    
+    window.onload = init;
+    </script>
+</body>
+</html>
