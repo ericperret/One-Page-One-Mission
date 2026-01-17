@@ -1,6 +1,6 @@
 # 🎯 One-Page-One-Mission (Khéops)
 
-![link](index2.html)
+▶️ [Lancer l'application](index2.html)
 
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
@@ -51,5 +51,6 @@ CC BY-NC 4.0 — Non-commercial use only.
 ## 👤 Author
 
 **Eric PERRET** — [GitHub](https://github.com/ericperret)
+
 
 
