@@ -13,7 +13,9 @@
 --------------------------------------------------------------------------------
  Historique
  3.4  ADC 1 MHz, Kalman, RANSAC, cohérence géométrique, vent, ISO 9613-1
- 4.2  - Écart de temps d'arrivée = ce que mesure la corrélation : décalage sur
+ 4.2  - Démarrage automatique de la simulation au chargement (mesure du bruit
+        de fond au micro reprise au premier clic si le navigateur suspend l'audio)
+      - Écart de temps d'arrivée = ce que mesure la corrélation : décalage sur
         la voie i du front d'onde qui arrive sur la voie j au centre du segment
         de référence ; vérité, estimateur et étalonnage alignés sur cette
         convention (l'ancienne « même instant de réception » faussait les
@@ -4581,6 +4583,17 @@
             MIC.aGain = new Float32Array(MIC.spec.length);
             const df = MIC.ctx.sampleRate / MIC.analyser.fftSize;
             for (let k = 0; k < MIC.aGain.length; k++) MIC.aGain[k] = k * df < 20 ? 0 : aWeightPower(k * df);
+            // Démarrage automatique : le navigateur suspend l'audio jusqu'au
+            // premier geste de l'utilisateur ; reprise au premier clic ou touche
+            if (MIC.ctx.state === 'suspended') {
+                const resume = () => {
+                    MIC.ctx.resume();
+                    window.removeEventListener('pointerdown', resume, true);
+                    window.removeEventListener('keydown', resume, true);
+                };
+                window.addEventListener('pointerdown', resume, true);
+                window.addEventListener('keydown', resume, true);
+            }
             MIC.active = true;
         } catch (err) {
             MIC.refused = true;
@@ -4677,6 +4690,7 @@
         setInterval(micSample, MIC.period);
         updateUI();
         draw();
+        toggleSimulation();                     // démarrage automatique
     }
 
     window.addEventListener('load', init);
