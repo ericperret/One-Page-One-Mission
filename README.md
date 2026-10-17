@@ -390,7 +390,7 @@ Computation runs in 25 ms slices to keep the interface responsive. Drone traject
 | 3.5 | Canvas map (Leaflet removed); ISO 9613-1 fixed; Kalman removed; ground truth isolated |
 | 3.4 | 1 MHz ADC, RANSAC, wind, ISO 9613-1 |
 
-The detail of each version is in the header block of `kheops_v42.html`. Files of earlier versions remain in the repository for reference.
+The detail of each version is in the header block of `kheops_v42.html`.
 
 ## License
 

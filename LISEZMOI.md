@@ -389,7 +389,7 @@ Le calcul est découpé en tranches de 25 ms pour garder l'interface fluide. Les
 | 3.5 | Carte canvas (Leaflet retiré) ; ISO 9613-1 corrigée ; Kalman supprimé ; vérité terrain isolée |
 | 3.4 | ADC 1 MHz, RANSAC, vent, ISO 9613-1 |
 
-Le détail de chaque version figure dans le cartouche en tête de `kheops_v42.html`. Les fichiers des versions précédentes restent dans le dépôt pour mémoire.
+Le détail de chaque version figure dans le cartouche en tête de `kheops_v42.html`.
 
 ## Licence
 
