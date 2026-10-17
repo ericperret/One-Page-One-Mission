@@ -2,22 +2,22 @@
 ================================================================================
  Nom          : Khéops - LISEZMOI (dépôt GitHub One-Page-One-Mission)
  Fichier      : LISEZMOI.md
- Version      : 4.2
+ Version      : 4.3
  Date         : 17/10/2026
  Auteur       : Eric PERRET
  Objet        : présentation, algorithmes et choix arbitrés du simulateur
-                kheops_v42.html (version anglaise : README.md)
+                kheops_v43.html (version anglaise : README.md)
 ================================================================================
 -->
 
-# 🎯 One-Page-One-Mission — Khéops v4.2
+# 🎯 One-Page-One-Mission — Khéops v4.3
 
-▶️ **[Lancer le simulateur](https://ericperret.github.io/One-Page-One-Mission/kheops_v42.html)** — la simulation démarre seule au chargement.
+▶️ **[Lancer le simulateur](https://ericperret.github.io/One-Page-One-Mission/kheops_v43.html)** — la simulation démarre seule au chargement.
 
 [![Licence : CC BY-NC 4.0](https://img.shields.io/badge/Licence-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![HTML/CSS/JS pur](https://img.shields.io/badge/Pur-HTML%2FCSS%2FJS-blue.svg)](#technologie)
 [![Aucune librairie](https://img.shields.io/badge/Librairies-aucune-green.svg)](#technologie)
-[![Un seul fichier](https://img.shields.io/badge/Fichier-unique-orange.svg)](kheops_v42.html)
+[![Un seul fichier](https://img.shields.io/badge/Fichier-unique-orange.svg)](kheops_v43.html)
 
 **Simulateur de goniométrie acoustique passive de drone** par écarts de temps d'arrivée (TDOA) sur une pyramide de 5 micros, avec caméra d'identification orientée par l'acoustique.
 
@@ -25,7 +25,7 @@ Le simulateur sert à **dimensionner la base de la pyramide** : il trace le *tem
 
 🇬🇧 English version: [README.md](README.md)
 
-![Khéops v4.2 en fonctionnement](screenshot.png)
+![Khéops v4.3 en fonctionnement](screenshot.png)
 
 ---
 
@@ -67,7 +67,7 @@ Khéops est un système **d'observation** : il n'y a ni arme ni conduite de tir.
 
 ## 2. Utilisation
 
-1. Ouvrir `kheops_v42.html` dans un navigateur récent (Chrome, Edge, Firefox) — en local (`file://`) ou par le lien GitHub Pages.
+1. Ouvrir `kheops_v43.html` dans un navigateur récent (Chrome, Edge, Firefox) — en local (`file://`) ou par le lien GitHub Pages.
 2. La simulation démarre automatiquement. Le navigateur demande l'accès au micro : il sert **uniquement** à mesurer le bruit de fond (LA90). En cas de refus, le bruit de fond vaut 35 dB(A). Si le navigateur suspend l'audio au chargement, la mesure reprend au premier clic.
 3. **Clic sur la carte** : déplace Khéops à cet endroit. La météo est relue dès que le déplacement dépasse 2 km.
 4. Onglet **Étude** → **Lancer l'étude** : calcule la courbe de dimensionnement (environ 2 minutes dans un navigateur de bureau).
@@ -375,11 +375,13 @@ Le calcul est découpé en tranches de 25 ms pour garder l'interface fluide. Les
 - FFT radix-2 et algèbre linéaire (élimination de Gauss, inversion) écrites à la main.
 - Boucle physique à pas fixe de 20 ms (au plus 5 pas rattrapés par image), interface rafraîchie à 10 Hz.
 - Fonctionne hors ligne (sans carte ni météo en direct).
+- Interface bilingue : français si le navigateur est en français, anglais sinon.
 
 ## Historique
 
 | Version | Apport principal |
 |---|---|
+| 4.3 | Interface bilingue (langue du navigateur : français ou anglais) |
 | 4.2 | Démarrage automatique ; convention de corrélation exacte ; segments calés par la piste ; Jacobien exact de l'instant d'émission ; départs multiples ; facteur de bruit estimé ; écho sol par cepstre ; étalonnage ADC par taille |
 | 4.1 | Niveau propre à chaque micro ; écarts de niveau dans la trajectoire |
 | 4.0 | Pyramide ; distance par la courbure ; trajectoire par moindres carrés glissants ; onglet Étude |
@@ -389,7 +391,7 @@ Le calcul est découpé en tranches de 25 ms pour garder l'interface fluide. Les
 | 3.5 | Carte canvas (Leaflet retiré) ; ISO 9613-1 corrigée ; Kalman supprimé ; vérité terrain isolée |
 | 3.4 | ADC 1 MHz, RANSAC, vent, ISO 9613-1 |
 
-Le détail de chaque version figure dans le cartouche en tête de `kheops_v42.html`.
+Le détail de chaque version figure dans le cartouche en tête de `kheops_v43.html`.
 
 ## Licence
 

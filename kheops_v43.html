@@ -2,8 +2,8 @@
 <!--
 ================================================================================
  Nom          : Khéops - Simulateur de localisation acoustique TDOA
- Fichier      : kheops_v42.html
- Version      : 4.2
+ Fichier      : kheops_v43.html
+ Version      : 4.3
  Date         : 17/10/2026
  Auteur       : Eric
  Langage      : HTML / CSS / JavaScript (aucune librairie)
@@ -13,6 +13,8 @@
 --------------------------------------------------------------------------------
  Historique
  3.4  ADC 1 MHz, Kalman, RANSAC, cohérence géométrique, vent, ISO 9613-1
+ 4.3  - Interface bilingue : langue du navigateur détectée au chargement,
+        français si le navigateur est en français, anglais sinon
  4.2  - Démarrage automatique de la simulation au chargement (mesure du bruit
         de fond au micro reprise au premier clic si le navigateur suspend l'audio)
       - Écart de temps d'arrivée = ce que mesure la corrélation : décalage sur
@@ -100,7 +102,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Système Khéops v4.2 - ADC 1MHz</title>
+    <title data-en="Khéops System v4.3 - ADC 1MHz">Système Khéops v4.3 - ADC 1MHz</title>
     <style>
         :root {
             --bg-primary: #0a0e14;
@@ -714,25 +716,25 @@
                     </svg>
                 </div>
                 <div>
-                    <h1>KHÉOPS <span class="version-tag">v4.2 ADC1M</span></h1>
+                    <h1>KHÉOPS <span class="version-tag">v4.3 ADC1M</span></h1>
                 </div>
             </div>
             <div class="header-stats">
                 <div class="stat-box">
                     <div class="value" id="identCount">0</div>
-                    <div class="label">Identifiés</div>
+                    <div class="label" data-en="Identified">Identifiés</div>
                 </div>
                 <div class="stat-box">
                     <div class="value" id="avgAcq">--</div>
-                    <div class="label">T. align. moy. (s)</div>
+                    <div class="label" data-en="Avg align time (s)">T. align. moy. (s)</div>
                 </div>
                 <div class="stat-box">
                     <div class="value" id="avgTrack">--</div>
-                    <div class="label">T. suivi moy. (s)</div>
+                    <div class="label" data-en="Avg track time (s)">T. suivi moy. (s)</div>
                 </div>
                 <div class="stat-box">
                     <div class="value" id="avgPct">--%</div>
-                    <div class="label">Aligné moy.</div>
+                    <div class="label" data-en="Avg aligned">Aligné moy.</div>
                 </div>
             </div>
             <div class="status-badge">
@@ -743,24 +745,24 @@
         <div class="main-area">
             <div class="views-container">
                 <div class="view-panel">
-                    <div class="view-label">KHÉOPS - VUE DESSUS</div>
+                    <div class="view-label" data-en="KHÉOPS - TOP VIEW">KHÉOPS - VUE DESSUS</div>
                     <div id="mapContainer">
                         <canvas id="mapTiles"></canvas>
-                        <canvas id="mapOverlay" title="Glisser : déplacer la carte - Clic : placer Khéops - Molette : zoom"></canvas>
+                        <canvas id="mapOverlay" title="Glisser : déplacer la carte - Clic : placer Khéops - Molette : zoom" data-en-title="Drag: pan the map - Click: place Khéops - Wheel: zoom"></canvas>
                         <div class="map-zoom">
-                            <button type="button" id="zoomIn" aria-label="Zoom avant">+</button>
-                            <button type="button" id="zoomOut" aria-label="Zoom arrière">−</button>
+                            <button type="button" id="zoomIn" aria-label="Zoom avant" data-en-aria="Zoom in">+</button>
+                            <button type="button" id="zoomOut" aria-label="Zoom arrière" data-en-aria="Zoom out">−</button>
                         </div>
                         <div class="map-attrib">© Esri © Maxar · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>
                     </div>
                 </div>
                 <div class="view-panel">
-                    <div class="view-label">STATISTIQUES</div>
+                    <div class="view-label" data-en="STATISTICS">STATISTIQUES</div>
                     <div class="stat-tabs" role="tablist">
-                        <button type="button" data-view="study">Étude</button>
+                        <button type="button" data-view="study" data-en="Study">Étude</button>
                         <button type="button" data-view="dir">Direction</button>
                         <button type="button" data-view="dist">Distance</button>
-                        <button type="button" id="studyBtn" class="study-run">Lancer l'étude</button>
+                        <button type="button" id="studyBtn" class="study-run" data-en="Run study">Lancer l'étude</button>
                     </div>
                     <canvas id="canvasSide"></canvas>
                     <div class="stat-tip" id="statTip"></div>
@@ -788,41 +790,41 @@
                     <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
                     </svg>
-                    <h3>CAMÉRA D'IDENTIFICATION</h3>
+                    <h3 data-en="IDENTIFICATION CAMERA">CAMÉRA D'IDENTIFICATION</h3>
                     <span class="chevron" aria-hidden="true"></span>
                 </div>
                 <div class="panel-content">
                     <div class="handover-indicator">
                         <div class="handover-box handover-kheops active" id="hoverKheops">KHÉOPS</div>
                         <div class="handover-arrow">→</div>
-                        <div class="handover-box handover-camera" id="hoverCamera">CAMÉRA</div>
+                        <div class="handover-box handover-camera" id="hoverCamera" data-en="CAMERA">CAMÉRA</div>
                     </div>
                     <div id="camStatus" class="cam-status cam-idle">
                         <div class="cam-status-title">VEILLE</div>
                     </div>
                     <div class="data-grid" style="margin-top: 8px;">
                         <div class="data-item">
-                            <div class="data-label">Temps pour s'aligner</div>
+                            <div class="data-label" data-en="Time to align">Temps pour s'aligner</div>
                             <div class="data-value chrono target-value"><span id="chronoAcq">--</span><span class="unit">s</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Alignement en cours</div>
+                            <div class="data-label" data-en="Current alignment">Alignement en cours</div>
                             <div class="data-value chrono" style="color: var(--accent-green);"><span id="chronoAlign">--</span><span class="unit">s</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Cumul aligné</div>
+                            <div class="data-label" data-en="Total aligned">Cumul aligné</div>
                             <div class="data-value"><span id="chronoTotal">--</span><span class="unit">s</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Temps aligné</div>
+                            <div class="data-label" data-en="Time aligned">Temps aligné</div>
                             <div class="data-value"><span id="chronoPct">--</span><span class="unit">%</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Temps de suivi</div>
+                            <div class="data-label" data-en="Tracking time">Temps de suivi</div>
                             <div class="data-value"><span id="chronoTrack">--</span><span class="unit">s</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Écart axe</div>
+                            <div class="data-label" data-en="Axis error">Écart axe</div>
                             <div class="data-value error-value"><span id="camError">--</span><span class="unit">°</span></div>
                         </div>
                     </div>
@@ -840,31 +842,31 @@
                 <div class="panel-content">
                     <div class="data-grid" style="gap: 4px;">
                         <div class="data-item">
-                            <div class="data-label small-label">Courbure (1 mesure)</div>
+                            <div class="data-label small-label" data-en="Curvature (1 measurement)">Courbure (1 mesure)</div>
                             <div class="data-value small-value"><span id="frameRange">--</span><span class="unit" id="frameRangeSig"> m</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Trajectoire</div>
+                            <div class="data-label small-label" data-en="Trajectory">Trajectoire</div>
                             <div class="data-value small-value" style="color: var(--accent-green);"><span id="trkRange">--</span><span class="unit" id="trkRangeSig"> m</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Fenêtre</div>
+                            <div class="data-label small-label" data-en="Window">Fenêtre</div>
                             <div class="data-value small-value"><span id="trkWin">--</span><span class="unit">s</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">χ² réduit</div>
+                            <div class="data-label small-label" data-en="Reduced χ²">χ² réduit</div>
                             <div class="data-value small-value"><span id="trkChi2">--</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Mesures ajustées</div>
+                            <div class="data-label small-label" data-en="Fitted measurements">Mesures ajustées</div>
                             <div class="data-value small-value"><span id="trkObs">--</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Côté pyramide</div>
+                            <div class="data-label small-label" data-en="Pyramid side">Côté pyramide</div>
                             <div class="data-value small-value"><span id="pyrSide">--</span><span class="unit">m</span></div>
                         </div>
                         <div class="data-item full-width">
-                            <div class="data-label small-label">Part des niveaux dans la distance</div>
+                            <div class="data-label small-label" data-en="Level share in range">Part des niveaux dans la distance</div>
                             <div class="data-value small-value"><span id="levelShare">--</span><span class="unit">%</span></div>
                         </div>
                     </div>
@@ -876,21 +878,21 @@
                     <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
                     </svg>
-                    <h3>PRÉCISION</h3>
+                    <h3 data-en="ACCURACY">PRÉCISION</h3>
                     <span class="chevron" aria-hidden="true"></span>
                 </div>
                 <div class="panel-content">
                     <div class="data-grid">
                         <div class="data-item">
-                            <div class="data-label">Err. Pos 3D</div>
+                            <div class="data-label" data-en="3D pos. error">Err. Pos 3D</div>
                             <div class="data-value error-value" style="color: var(--accent-orange);"><span id="posError3D">--</span><span class="unit">m</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Err. Direction</div>
+                            <div class="data-label" data-en="Direction error">Err. Direction</div>
                             <div class="data-value error-value"><span id="dirError">--</span><span class="unit">°</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Err. Distance</div>
+                            <div class="data-label" data-en="Range error">Err. Distance</div>
                             <div class="data-value error-value"><span id="distanceError">--</span><span class="unit">m</span></div>
                         </div>
                         <div class="data-item">
@@ -898,11 +900,11 @@
                             <div class="data-value error-value"><span id="distanceErrorPct">--</span><span class="unit">%</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Dist. Réelle</div>
+                            <div class="data-label" data-en="True range">Dist. Réelle</div>
                             <div class="data-value real-value"><span id="realDistance">--</span><span class="unit">m</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Dist. Estimée</div>
+                            <div class="data-label" data-en="Est. range">Dist. Estimée</div>
                             <div class="data-value estimated-value"><span id="estDistance">--</span><span class="unit">m</span></div>
                         </div>
                     </div>
@@ -914,7 +916,7 @@
                     <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
                     </svg>
-                    <h3>CIBLE ESTIMÉE</h3>
+                    <h3 data-en="ESTIMATED TARGET">CIBLE ESTIMÉE</h3>
                     <span class="chevron" aria-hidden="true"></span>
                 </div>
                 <div class="panel-content">
@@ -944,33 +946,33 @@
                     <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                     </svg>
-                    <h3>CINÉMATIQUE</h3>
+                    <h3 data-en="KINEMATICS">CINÉMATIQUE</h3>
                     <span class="chevron" aria-hidden="true"></span>
                 </div>
                 <div class="panel-content">
                     <div class="data-grid">
                         <div class="data-item">
-                            <div class="data-label">V. Radiale</div>
+                            <div class="data-label" data-en="Radial vel.">V. Radiale</div>
                             <div class="data-value" id="vRadialValue"><span>--</span><span class="unit">m/s</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">Retard compensé</div>
+                            <div class="data-label" data-en="Delay compensation">Retard compensé</div>
                             <div class="data-value"><span id="ghostCorr">--</span><span class="unit">m</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">c réelle</div>
+                            <div class="data-label" data-en="True c">c réelle</div>
                             <div class="data-value" style="color: var(--accent-red);"><span id="soundSpeedDisplay">--</span><span class="unit">m/s</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label">c estimateur</div>
+                            <div class="data-label" data-en="Estimator c">c estimateur</div>
                             <div class="data-value" style="color: var(--accent-green);"><span id="soundSpeedEst">--</span><span class="unit">m/s</span></div>
                         </div>
                     </div>
                     <div class="doppler-indicator">
                         <div style="display: flex; justify-content: space-between;">
-                            <span>Éloignement</span>
+                            <span data-en="Receding">Éloignement</span>
                             <span id="dopplerLabel">0 m/s</span>
-                            <span>Approche</span>
+                            <span data-en="Approaching">Approche</span>
                         </div>
                         <div class="doppler-bar">
                             <div class="doppler-fill" id="dopplerFill"></div>
@@ -984,7 +986,7 @@
                     <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="#00bfff" stroke-width="2">
                         <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
                     </svg>
-                    <h3 style="color: #00bfff;">MÉTÉO</h3>
+                    <h3 style="color: #00bfff;" data-en="WEATHER">MÉTÉO</h3>
                     <span class="chevron" aria-hidden="true"></span>
                 </div>
                 <div class="panel-content">
@@ -994,31 +996,31 @@
                             <div class="data-value small-value"><span id="metSource">--</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Température</div>
+                            <div class="data-label small-label" data-en="Temperature">Température</div>
                             <div class="data-value small-value"><span id="metTemp">--</span><span class="unit">°C</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Humidité</div>
+                            <div class="data-label small-label" data-en="Humidity">Humidité</div>
                             <div class="data-value small-value"><span id="metHr">--</span><span class="unit">%</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Pression sol</div>
+                            <div class="data-label small-label" data-en="Surface pressure">Pression sol</div>
                             <div class="data-value small-value"><span id="metP">--</span><span class="unit">hPa</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Rafales (10 m)</div>
+                            <div class="data-label small-label" data-en="Gusts (10 m)">Rafales (10 m)</div>
                             <div class="data-value small-value"><span id="metGust">--</span><span class="unit">km/h</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Vent simulé (10 m)</div>
+                            <div class="data-label small-label" data-en="Simulated wind (10 m)">Vent simulé (10 m)</div>
                             <div class="data-value" style="font-size: 0.7rem;"><span id="windSpeed">--</span><span class="unit">km/h</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Provenance</div>
+                            <div class="data-label small-label" data-en="From">Provenance</div>
                             <div class="data-value" style="font-size: 0.7rem;"><span id="windDirection">--</span><span class="unit">°</span></div>
                         </div>
                         <div class="data-item full-width">
-                            <div class="data-label small-label">État</div>
+                            <div class="data-label small-label" data-en="Status">État</div>
                             <div class="data-value small-value" id="windStatus">--</div>
                         </div>
                     </div>
@@ -1033,7 +1035,7 @@
                     <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2">
                         <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
                     </svg>
-                    <h3 style="color: #ffd700;">ATMOSPHÈRE ISO 9613-1</h3>
+                    <h3 style="color: #ffd700;" data-en="ATMOSPHERE ISO 9613-1">ATMOSPHÈRE ISO 9613-1</h3>
                     <span class="chevron" aria-hidden="true"></span>
                 </div>
                 <div class="panel-content">
@@ -1075,33 +1077,33 @@
                     <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="#ff8c00" stroke-width="2">
                         <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/>
                     </svg>
-                    <h3 style="color: #ff8c00;">COHÉRENCE</h3>
+                    <h3 style="color: #ff8c00;" data-en="COHERENCE">COHÉRENCE</h3>
                     <span class="chevron" aria-hidden="true"></span>
                 </div>
                 <div class="panel-alerts">
-                    <div id="gustAlert" class="alert-box alert-red">⚠️ RAFALE / MESURES INCOHÉRENTES</div>
-                    <div id="zenithAlert" class="alert-box alert-yellow">📍 ZONE ZÉNITHALE</div>
+                    <div id="gustAlert" class="alert-box alert-red" data-en="⚠️ GUST / INCONSISTENT MEASUREMENTS">⚠️ RAFALE / MESURES INCOHÉRENTES</div>
+                    <div id="zenithAlert" class="alert-box alert-yellow" data-en="📍 ZENITH ZONE">📍 ZONE ZÉNITHALE</div>
                 </div>
                 <div class="panel-content">
                     <div class="data-grid" style="gap: 4px;">
                         <div class="data-item">
-                            <div class="data-label small-label">Indice</div>
+                            <div class="data-label small-label" data-en="Index">Indice</div>
                             <div class="data-value" style="font-size: 0.8rem;"><span id="coherenceIndex">--</span><span class="unit">%</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">TDOA rejetés</div>
+                            <div class="data-label small-label" data-en="Rejected TDOA">TDOA rejetés</div>
                             <div class="data-value small-value"><span id="ransacRejected">--</span><span class="unit">/ 10</span></div>
                         </div>
                         <div class="data-item full-width">
-                            <div class="data-label small-label">Capteurs suspects</div>
+                            <div class="data-label small-label" data-en="Suspect sensors">Capteurs suspects</div>
                             <div class="data-value small-value"><span id="ransacSensors">--</span></div>
                         </div>
                         <div class="data-item full-width">
-                            <div class="data-label small-label">Facteur de bruit estimé / réel</div>
+                            <div class="data-label small-label" data-en="Noise factor estimated / true">Facteur de bruit estimé / réel</div>
                             <div class="data-value small-value"><span id="noiseScale">--</span></div>
                         </div>
                         <div class="data-item full-width">
-                            <div class="data-label small-label">Écho sol (micro du sommet)</div>
+                            <div class="data-label small-label" data-en="Ground echo (top mic)">Écho sol (micro du sommet)</div>
                             <div class="data-value small-value"><span id="echoMeas">--</span></div>
                         </div>
                     </div>
@@ -1110,7 +1112,7 @@
                             <div id="coherenceBar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #ff3b3b, #ffd700, #00ff88); transition: width 0.2s;"></div>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.45rem; color: var(--text-secondary); margin-top: 2px;">
-                            <span>INCOHÉRENT</span>
+                            <span data-en="INCONSISTENT">INCOHÉRENT</span>
                             <span>STABLE</span>
                         </div>
                     </div>
@@ -1122,39 +1124,39 @@
                     <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="#8a2be2" stroke-width="2">
                         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                     </svg>
-                    <h3 style="color: #8a2be2;">ACOUSTIQUE</h3>
+                    <h3 style="color: #8a2be2;" data-en="ACOUSTICS">ACOUSTIQUE</h3>
                     <span class="chevron" aria-hidden="true"></span>
                 </div>
                 <div class="panel-alerts">
                     <div id="signalLostAlert" class="alert-box alert-red">
-                        <div style="font-size: 0.7rem;">📡 SIGNAL PERDU</div>
+                        <div style="font-size: 0.7rem;" data-en="📡 SIGNAL LOST">📡 SIGNAL PERDU</div>
                         <div style="font-size: 0.5rem; margin-top: 2px; font-weight: normal;" id="signalLostDetail">Drone hors portée acoustique</div>
                     </div>
                 </div>
                 <div class="panel-content">
                     <div class="data-grid" style="gap: 4px;">
                         <div class="data-item">
-                            <div class="data-label small-label">SNR mesuré</div>
+                            <div class="data-label small-label" data-en="Measured SNR">SNR mesuré</div>
                             <div class="data-value" style="font-size: 0.8rem;"><span id="snrValue">--</span><span class="unit">dB</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Niveau Reçu</div>
+                            <div class="data-label small-label" data-en="Received level">Niveau Reçu</div>
                             <div class="data-value" style="font-size: 0.7rem;"><span id="receivedLevel">--</span><span class="unit">dB</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Bruit de fond <span id="noiseSource">(défaut)</span></div>
+                            <div class="data-label small-label"><span data-en="Background noise">Bruit de fond</span> <span id="noiseSource">(défaut)</span></div>
                             <div class="data-value" style="font-size: 0.7rem;"><span id="backgroundNoise">35</span><span class="unit">dB(A)</span></div>
                         </div>
                         <div class="data-item">
-                            <div class="data-label small-label">Portée Max</div>
+                            <div class="data-label small-label" data-en="Max range">Portée Max</div>
                             <div class="data-value" style="font-size: 0.7rem;"><span id="maxRange">--</span><span class="unit">m</span></div>
                         </div>
                         <div class="data-item full-width">
-                            <div class="data-label small-label">Écart de niveau entre micros</div>
+                            <div class="data-label small-label" data-en="Inter-mic level spread">Écart de niveau entre micros</div>
                             <div class="data-value small-value"><span id="levelSpread">--</span><span class="unit">dB</span></div>
                         </div>
                         <div class="data-item full-width">
-                            <div class="data-label small-label">Mesure TDOA</div>
+                            <div class="data-label small-label" data-en="TDOA measurement">Mesure TDOA</div>
                             <div class="data-value small-value"><span id="tdoaMode">--</span></div>
                         </div>
                         <div class="data-item full-width">
@@ -1165,7 +1167,7 @@
                     <div style="margin-top: 6px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.4rem; color: var(--text-secondary); margin-bottom: 2px;">
                             <span>INAUDIBLE</span>
-                            <span>CLAIR</span>
+                            <span data-en="CLEAR">CLAIR</span>
                         </div>
                         <div style="height: 8px; background: var(--bg-primary); border-radius: 4px; overflow: hidden; position: relative;">
                             <div style="position: absolute; left: 26%; width: 1px; height: 100%; background: var(--accent-red);"></div>
@@ -1398,6 +1400,21 @@
     const SPANNING_TREES = combinations(NP, NS - 1).filter(pairsSpanAll);
 
     // ============================================================
+    // LANGUE : français si le navigateur est en français, anglais sinon
+    // L(fr, en) choisit le texte ; data-en, data-en-title, data-en-aria
+    // portent la version anglaise des textes fixes de la page.
+    // ============================================================
+    const LANG = /^fr(-|$)/i.test((navigator.languages && navigator.languages[0]) || navigator.language || '') ? 'fr' : 'en';
+    const L = (fr, en) => LANG === 'fr' ? fr : en;
+    function applyLanguage() {
+        document.documentElement.lang = LANG;
+        if (LANG === 'fr') return;
+        document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; });
+        document.querySelectorAll('[data-en-title]').forEach(el => { el.title = el.dataset.enTitle; });
+        document.querySelectorAll('[data-en-aria]').forEach(el => { el.setAttribute('aria-label', el.dataset.enAria); });
+    }
+
+    // ============================================================
     // OUTILS
     // ============================================================
     function normalize(v) {
@@ -1575,7 +1592,7 @@
         'consumer': { name: 'Consumer (600g)',  spl: 79 },
         'prosumer': { name: 'Prosumer (1.2kg)', spl: 83 },
         'pro':      { name: 'Pro (3kg)',        spl: 87 },
-        'heavy':    { name: 'Lourd (5kg)',      spl: 90 },
+        'heavy':    { name: L('Lourd (5kg)', 'Heavy (5kg)'),      spl: 90 },
         'fpv':      { name: 'FPV Racing',       spl: 95 }
     };
 
@@ -3176,10 +3193,10 @@
 
     function cameraStatus() {
         const cam = sim.camera;
-        if (cam.identified) return { code: 'ident', label: 'IDENTIFIÉ' };
-        if (!cam.tracking) return { code: 'idle', label: 'VEILLE' };
-        if (cam.aligned) return { code: 'align', label: 'ALIGNÉ' };
-        return { code: 'acq', label: isFinite(cam.acqTime) ? 'RÉALIGNEMENT' : 'ALIGNEMENT' };
+        if (cam.identified) return { code: 'ident', label: L('IDENTIFIÉ', 'IDENTIFIED') };
+        if (!cam.tracking) return { code: 'idle', label: L('VEILLE', 'STANDBY') };
+        if (cam.aligned) return { code: 'align', label: L('ALIGNÉ', 'ALIGNED') };
+        return { code: 'acq', label: isFinite(cam.acqTime) ? L('RÉALIGNEMENT', 'REALIGNING') : L('ALIGNEMENT', 'ALIGNING') };
     }
 
     // ============================================================
@@ -3206,7 +3223,7 @@
         const st = cameraStatus();
 
         const panel = document.getElementById('cameraPanel');
-        panel.querySelector('.view-label').textContent = 'CAMÉRA - ' + st.label;
+        panel.querySelector('.view-label').textContent = L('CAMÉRA - ', 'CAMERA - ') + st.label;
         panel.classList.toggle('camera-active', cam.tracking || cam.identified);
 
         ctx.fillStyle = cam.tracking ? '#0a0a14' : '#08080c';
@@ -3270,19 +3287,19 @@
         ctx.fillStyle = cam.tracking ? '#00d4ff' : '#00d4ff88';
         ctx.font = '8px Courier New';
         ctx.textAlign = 'left';
-        ctx.fillText(`CAP:  ${cap.toFixed(1)}°`, 4, 34);
-        ctx.fillText(`SITE: ${(cam.el * 180 / Math.PI).toFixed(1)}°`, 4, 44);
+        ctx.fillText(`${L('CAP: ', 'HDG: ')} ${cap.toFixed(1)}°`, 4, 34);
+        ctx.fillText(`${L('SITE:', 'ELEV:')} ${(cam.el * 180 / Math.PI).toFixed(1)}°`, 4, 44);
         ctx.textAlign = 'right';
-        ctx.fillText(`RÉEL: ${t.r.toFixed(0)}m`, w - 4, 12);
+        ctx.fillText(`${L('RÉEL', 'TRUE')}: ${t.r.toFixed(0)}m`, w - 4, 12);
         ctx.fillText(`EST: ${e.valid ? e.distance.toFixed(0) + 'm' : '--'}`, w - 4, 22);
 
         ctx.textAlign = 'center';
         if (cam.identified) {
             ctx.fillStyle = '#00ff88';
             ctx.font = 'bold 14px Arial Black';
-            ctx.fillText('DRONE IDENTIFIÉ', cx, h - 30);
+            ctx.fillText(L('DRONE IDENTIFIÉ', 'DRONE IDENTIFIED'), cx, h - 30);
             ctx.font = '9px Courier New';
-            ctx.fillText(`Temps pour s'aligner : ${cam.acqTime.toFixed(2)} s`, cx, h - 14);
+            ctx.fillText(`${L('Temps pour s\'aligner :', 'Time to align:')} ${cam.acqTime.toFixed(2)} s`, cx, h - 14);
         } else if (cam.tracking) {
             const p = Math.min(1, cam.alignRun / CAM_CFG.identifyTime);
             ctx.fillStyle = '#1a1a24';
@@ -3291,11 +3308,11 @@
             ctx.fillRect(w / 4, h - 22, w / 2 * p, 4);
             ctx.fillStyle = '#8b949e';
             ctx.font = '9px Courier New';
-            ctx.fillText(`ALIGNEMENT ${cam.alignRun.toFixed(1)} / ${CAM_CFG.identifyTime.toFixed(1)} s`, cx, h - 8);
+            ctx.fillText(`${L('ALIGNEMENT', 'ALIGNING')} ${cam.alignRun.toFixed(1)} / ${CAM_CFG.identifyTime.toFixed(1)} s`, cx, h - 8);
         } else {
             ctx.fillStyle = '#8b949e';
             ctx.font = '9px Courier New';
-            ctx.fillText('EN ATTENTE DE DÉTECTION', cx, h - 8);
+            ctx.fillText(L('EN ATTENTE DE DÉTECTION', 'WAITING FOR DETECTION'), cx, h - 8);
         }
     }
 
@@ -3307,7 +3324,7 @@
         const st = cameraStatus();
 
         const panel = document.getElementById('reticlePanel');
-        panel.querySelector('.view-label').textContent = 'CENTRAGE - ' + st.label;
+        panel.querySelector('.view-label').textContent = L('CENTRAGE - ', 'CENTERING - ') + st.label;
 
         ctx.fillStyle = '#050508';
         ctx.fillRect(0, 0, w, h);
@@ -3356,11 +3373,11 @@
         ctx.fillStyle = active ? col : '#8b949e';
         ctx.font = '9px Courier New';
         ctx.textAlign = 'left';
-        ctx.fillText(`ÉCART: ${isFinite(cam.error) ? (cam.error * 180 / Math.PI).toFixed(2) : '--'}°`, 4, 34);
+        ctx.fillText(`${L('ÉCART', 'ERROR')}: ${isFinite(cam.error) ? (cam.error * 180 / Math.PI).toFixed(2) : '--'}°`, 4, 34);
         ctx.fillText(`≈ ${isFinite(cam.error) ? (cam.error * t.r).toFixed(1) : '--'} m`, 4, 46);
         ctx.textAlign = 'right';
-        ctx.fillText(`ALIGNÉ: ${cam.alignRun.toFixed(2)} s`, w - 4, 12);
-        ctx.fillText(`CUMUL: ${cam.alignTotal.toFixed(2)} s`, w - 4, 24);
+        ctx.fillText(`${L('ALIGNÉ', 'ALIGNED')}: ${cam.alignRun.toFixed(2)} s`, w - 4, 12);
+        ctx.fillText(`${L('CUMUL', 'TOTAL')}: ${cam.alignTotal.toFixed(2)} s`, w - 4, 24);
         ctx.textAlign = 'center';
         ctx.font = 'bold 9px Arial Black';
         ctx.fillText(st.label, cx, h - 8);
@@ -3847,7 +3864,7 @@
             ctx.beginPath(); ctx.moveTo(x, Lo.T + Lo.plotH); ctx.lineTo(x, Lo.T + Lo.plotH + 4); ctx.stroke();
             svText(ctx, String(d), x, Lo.T + Lo.plotH + 16, 'center');
         }
-        svText(ctx, 'distance réelle (m)', Lo.L + Lo.plotW / 2, Lo.T + Lo.plotH + 32, 'center');
+        svText(ctx, L('distance réelle (m)', 'true range (m)'), Lo.L + Lo.plotW / 2, Lo.T + Lo.plotH + 32, 'center');
     }
     // Axe vertical gradué : pas rond donnant 3 à 6 graduations
     function svValueAxis(ctx, Lo, yMax, unit) {
@@ -3937,7 +3954,7 @@
         svCurve(ctx, Lo, c.dir90, yMax, 'rgba(0,255,136,0.7)', [5, 4]);
         svCurve(ctx, Lo, c.dir50, yMax, '#00ff88');
         svCurve(ctx, Lo, c.cam50, yMax, '#ff00ff');
-        svLegend(ctx, Lo, [['#00ff88', 'position estimée, médiane'], ['rgba(0,255,136,0.7)', '90 %', [5, 4]], ['#ff00ff', 'axe caméra, médiane']]);
+        svLegend(ctx, Lo, [['#00ff88', L('position estimée, médiane', 'estimated position, median')], ['rgba(0,255,136,0.7)', '90 %', [5, 4]], ['#ff00ff', L('axe caméra, médiane', 'camera axis, median')]]);
     }
 
     function drawSvDistance(ctx, Lo) {
@@ -3955,7 +3972,7 @@
         });
         svCurve(ctx, Lo, c.pct90, yMax, 'rgba(0,212,255,0.7)', [5, 4]);
         svCurve(ctx, Lo, c.pct50, yMax, '#00d4ff');
-        svLegend(ctx, Lo, [['rgba(138,43,226,0.6)', 'détection', null, 'bar'], ['#00d4ff', 'erreur distance médiane'], ['rgba(0,212,255,0.7)', '90 %', [5, 4]]]);
+        svLegend(ctx, Lo, [['rgba(138,43,226,0.6)', L('détection', 'detection'), null, 'bar'], ['#00d4ff', L('erreur distance médiane', 'median range error')], ['rgba(0,212,255,0.7)', '90 %', [5, 4]]]);
     }
 
     // Texte de l'infobulle pour la position de la souris, null hors graphique
@@ -3971,11 +3988,11 @@
         const c = statsCurves();
         const n = c.nDir[b], nt = c.nTot[b];
         if (SV.view === 'dir') {
-            return `${head}<br>Khéops médiane ${f(c.dir50[b], 2, '°')}<br>Khéops 90 % ${f(c.dir90[b], 2, '°')}`
-                 + `<br>caméra médiane ${f(c.cam50[b], 2, '°')} (n = ${c.nCam[b]})<br>échantillons Khéops : ${n}`;
+            return `${head}<br>${L('Khéops médiane', 'Khéops median')} ${f(c.dir50[b], 2, '°')}<br>Khéops 90 % ${f(c.dir90[b], 2, '°')}`
+                 + `<br>${L('caméra médiane', 'camera median')} ${f(c.cam50[b], 2, '°')} (n = ${c.nCam[b]})<br>${L('échantillons Khéops :', 'Khéops samples:')} ${n}`;
         }
-        return `${head}<br>détection ${f(c.det[b], 0, ' %')} (${n} / ${nt})`
-             + `<br>erreur distance médiane ${f(c.pct50[b], 0, ' %')}<br>erreur distance 90 % ${f(c.pct90[b], 0, ' %')}`;
+        return `${head}<br>${L('détection', 'detection')} ${f(c.det[b], 0, ' %')} (${n} / ${nt})`
+             + `<br>${L('erreur distance médiane', 'median range error')} ${f(c.pct50[b], 0, ' %')}<br>${L('erreur distance 90 %', 'range error 90 %')} ${f(c.pct90[b], 0, ' %')}`;
     }
 
     // ============================================================
@@ -4032,8 +4049,8 @@
         STUDY.results = STUDY.sizes.map(size => ({ size, times: [], focused: 0, n: 0, p50: NaN, p90: NaN, cal: null }));
         STUDY.progress = 0;
         STUDY.meteo = METEO.ok
-            ? `vent ${WIND_CONFIG.baseSpeed.toFixed(0)} km/h (rafales ${METEO.gustKmh.toFixed(0)}), ${ATM_STATION.tempC.toFixed(0)} °C`
-            : 'atmosphère standard, vent nul';
+            ? `${L('vent', 'wind')} ${WIND_CONFIG.baseSpeed.toFixed(0)} km/h (${L('rafales', 'gusts')} ${METEO.gustKmh.toFixed(0)}), ${ATM_STATION.tempC.toFixed(0)} °C`
+            : L('atmosphère standard, vent nul', 'standard atmosphere, no wind');
         const saved = {
             side: PYRAMID_SIDE, mode: MEAS_CFG.mode, stats: { ...sim.stats }, cal: { ...NOISE_CAL },
             noise: ACOUSTIC.backgroundNoise
@@ -4095,10 +4112,10 @@
             ctx.beginPath(); ctx.moveTo(x, Lo.T + Lo.plotH); ctx.lineTo(x, Lo.T + Lo.plotH + 4); ctx.stroke();
             svText(ctx, String(a), x, Lo.T + Lo.plotH + 16, 'center');
         }
-        svText(ctx, 'côté de la pyramide (m)', Lo.L + Lo.plotW / 2, Lo.T + Lo.plotH + 32, 'center');
+        svText(ctx, L('côté de la pyramide (m)', 'pyramid side (m)'), Lo.L + Lo.plotW / 2, Lo.T + Lo.plotH + 32, 'center');
         if (!R) {
-            svText(ctx, 'Temps de focus à 1° selon la taille de la pyramide', Lo.L + Lo.plotW / 2, Lo.T + Lo.plotH / 2 - 10, 'center', '#c9d1d9');
-            svText(ctx, `${STUDY.sizes.length} tailles × ${STUDY.passes} passages : « Lancer l'étude »`, Lo.L + Lo.plotW / 2, Lo.T + Lo.plotH / 2 + 10, 'center');
+            svText(ctx, L('Temps de focus à 1° selon la taille de la pyramide', 'Time to focus at 1° vs pyramid size'), Lo.L + Lo.plotW / 2, Lo.T + Lo.plotH / 2 - 10, 'center', '#c9d1d9');
+            svText(ctx, L(`${STUDY.sizes.length} tailles × ${STUDY.passes} passages : « Lancer l'étude »`, `${STUDY.sizes.length} sizes × ${STUDY.passes} passes: "Run study"`), Lo.L + Lo.plotW / 2, Lo.T + Lo.plotH / 2 + 10, 'center');
             return;
         }
         // Barres : part des passages jamais mis au point (axe de droite, 0 - 100 %)
@@ -4135,12 +4152,12 @@
         line('p90', 'rgba(0,255,136,0.7)', [5, 4]);
         line('p50', '#00ff88');
         if (STUDY.running) {
-            svText(ctx, `Calcul… ${(STUDY.progress * 100).toFixed(0)} %`, Lo.L + Lo.plotW - 4, Lo.T + 14, 'right', '#00d4ff');
+            svText(ctx, `${L('Calcul…', 'Computing…')} ${(STUDY.progress * 100).toFixed(0)} %`, Lo.L + Lo.plotW - 4, Lo.T + 14, 'right', '#00d4ff');
         } else {
             svText(ctx, STUDY.meteo, Lo.L + Lo.plotW - 4, Lo.T + 14, 'right', '#8b949e', SV.fontSmall);
         }
-        svLegend(ctx, Lo, [['#00ff88', 'focus médian'], ['rgba(0,255,136,0.7)', 'focus 90 %', [5, 4]],
-                           ['rgba(255,59,59,0.5)', 'jamais mis au point (axe droit)', null, 'bar']]);
+        svLegend(ctx, Lo, [['#00ff88', L('focus médian', 'median focus')], ['rgba(0,255,136,0.7)', 'focus 90 %', [5, 4]],
+                           ['rgba(255,59,59,0.5)', L('jamais mis au point (axe droit)', 'never focused (right axis)'), null, 'bar']]);
     }
 
     function studyTooltip(mx) {
@@ -4150,9 +4167,9 @@
         for (const r of R) { const d = Math.abs(Lo.xOfSize(r.size) - mx); if (d < bd) { bd = d; best = r; } }
         if (!best || bd > 30 || !best.n) return null;
         const f = v => isFinite(v) ? v.toFixed(2) + ' s' : '—';
-        return `<b>côté ${best.size} m</b><br>focus médian ${f(best.p50)}<br>focus 90 % ${f(best.p90)}`
-             + `<br>mis au point ${best.focused} / ${best.n}`
-             + (best.cal ? `<br>bruit ADC / modèle ×${best.cal.factor.toFixed(2)} (aberrants ${(best.cal.outlier * 100).toFixed(1)} %)` : '');
+        return `<b>${L('côté', 'side')} ${best.size} m</b><br>${L('focus médian', 'median focus')} ${f(best.p50)}<br>focus 90 % ${f(best.p90)}`
+             + `<br>${L('mis au point', 'focused')} ${best.focused} / ${best.n}`
+             + (best.cal ? `<br>${L('bruit ADC / modèle', 'ADC / model noise')} ×${best.cal.factor.toFixed(2)} (${L('aberrants', 'outliers')} ${(best.cal.outlier * 100).toFixed(1)} %)` : '');
     }
 
     function initStatsView() {
@@ -4273,9 +4290,9 @@
         cs.innerHTML = `<div class="cam-status-title">${st.label}</div>`;
 
         const dotEl = $('statusDot'), txt = $('statusText');
-        if (cam.identified) { dotEl.style.background = '#00ff88'; txt.textContent = 'IDENTIFIÉ'; }
-        else if (cam.tracking) { dotEl.style.background = '#ff00ff'; txt.textContent = 'CAMÉRA'; }
-        else { dotEl.style.background = '#00ff88'; txt.textContent = sim.running ? 'KHÉOPS' : 'PRÊT'; }
+        if (cam.identified) { dotEl.style.background = '#00ff88'; txt.textContent = L('IDENTIFIÉ', 'IDENTIFIED'); }
+        else if (cam.tracking) { dotEl.style.background = '#ff00ff'; txt.textContent = L('CAMÉRA', 'CAMERA'); }
+        else { dotEl.style.background = '#00ff88'; txt.textContent = sim.running ? 'KHÉOPS' : L('PRÊT', 'READY'); }
 
         updateISODisplay();
         updateWindDisplay();
@@ -4300,13 +4317,13 @@
         $('windDirection').textContent = cfg.currentDirection.toFixed(0);
         $('metSource').textContent = METEO.ok
             ? `open-meteo ${METEO.time.slice(11, 16)} UTC (${METEO.lat.toFixed(2)}, ${METEO.lon.toFixed(2)})`
-            : (METEO.pending ? 'chargement…' : 'indisponible : atmosphère standard');
+            : (METEO.pending ? L('chargement…', 'loading…') : L('indisponible : atmosphère standard', 'unavailable: standard atmosphere'));
         $('metTemp').textContent = ATM_STATION.tempC.toFixed(1);
         $('metHr').textContent = ATM_STATION.humidity.toFixed(0);
         $('metP').textContent = ATM_STATION.pressureHPa.toFixed(1);
         $('metGust').textContent = METEO.ok ? METEO.gustKmh.toFixed(0) : '--';
         const st = $('windStatus');
-        if (cfg.isGusting) st.innerHTML = '<span style="color: var(--accent-red); animation: blink 0.3s infinite;">🌬️ RAFALE</span>';
+        if (cfg.isGusting) st.innerHTML = '<span style="color: var(--accent-red); animation: blink 0.3s infinite;">🌬️ ' + L('RAFALE', 'GUST') + '</span>';
         else st.innerHTML = '<span style="color: var(--accent-green);">NORMAL</span>';
         drawWindRose();
     }
@@ -4346,9 +4363,9 @@
         idx.style.color = !isFinite(coh) ? 'var(--text-secondary)' : coh > 70 ? 'var(--accent-green)' : coh > 40 ? 'var(--accent-yellow)' : 'var(--accent-red)';
         $('ransacRejected').textContent = e.count > 0 ? e.ransacRejected : '--';
         const realNf = sim.measurement && sim.measurement.mode === 'CORR' ? NaN : sim.drone.noiseFactor * NOISE_CAL.factor;
-        $('noiseScale').textContent = `×${e.noiseScale.toFixed(2)} / ${isFinite(realNf) ? '×' + realNf.toFixed(2) : 'chaîne ADC'}`;
-        $('echoMeas').textContent = isFinite(e.echoMeas) ? `${(e.echoMeas * 1000).toFixed(2)} ms` : 'non détecté';
-        $('ransacSensors').textContent = e.count > 0 ? (e.ransacSuspects.length ? e.ransacSuspects.map(s => 'S' + s).join(', ') : 'aucun') : '--';
+        $('noiseScale').textContent = `×${e.noiseScale.toFixed(2)} / ${isFinite(realNf) ? '×' + realNf.toFixed(2) : L('chaîne ADC', 'ADC chain')}`;
+        $('echoMeas').textContent = isFinite(e.echoMeas) ? `${(e.echoMeas * 1000).toFixed(2)} ms` : L('non détecté', 'not detected');
+        $('ransacSensors').textContent = e.count > 0 ? (e.ransacSuspects.length ? e.ransacSuspects.map(s => 'S' + s).join(', ') : L('aucun', 'none')) : '--';
         $('coherenceBar').style.width = (isFinite(coh) ? coh : 0) + '%';
         $('gustAlert').style.display = WIND_CONFIG.isGusting || (isFinite(coh) && coh < EST_CFG.coherenceMin) ? 'block' : 'none';
         $('zenithAlert').style.display = e.valid && e.isZenith ? 'block' : 'none';
@@ -4363,11 +4380,12 @@
         snrEl.style.color = snr >= 15 ? 'var(--accent-green)' : snr >= ACOUSTIC.detectionThreshold ? 'var(--accent-yellow)' : 'var(--accent-red)';
         $('receivedLevel').textContent = fmt(e.levelDb, 1);
         $('backgroundNoise').textContent = ACOUSTIC.backgroundNoise.toFixed(0);
-        $('noiseSource').textContent = MIC.active && isFinite(MIC.la90) ? '(micro)' : '(défaut)';
+        $('noiseSource').textContent = MIC.active && isFinite(MIC.la90) ? L('(micro)', '(mic)') : L('(défaut)', '(default)');
         $('maxRange').textContent = Math.max(...ACOUSTIC.detectionBubble.map(p => p.range)).toFixed(0);
         $('levelSpread').textContent = !e.signalLost && isFinite(e.levelSpread) ? e.levelSpread.toFixed(2) : '--';
-        $('tdoaMode').textContent = e.tdoaMode === 'CORR' ? 'corrélation ADC 1 MHz'
-            : `modèle étalonné par la chaîne ADC (bruit ×${NOISE_CAL.factor.toFixed(2)}, écho accroché ${(NOISE_CAL.echoLock * 100).toFixed(0)} %)`;
+        $('tdoaMode').textContent = e.tdoaMode === 'CORR' ? L('corrélation ADC 1 MHz', 'ADC correlation 1 MHz')
+            : L(`modèle étalonné par la chaîne ADC (bruit ×${NOISE_CAL.factor.toFixed(2)}, écho accroché ${(NOISE_CAL.echoLock * 100).toFixed(0)} %)`,
+                `model calibrated by the ADC chain (noise ×${NOISE_CAL.factor.toFixed(2)}, echo lock ${(NOISE_CAL.echoLock * 100).toFixed(0)} %)`);
         $('sigmaTau').textContent = isFinite(e.sigmaTau) && !e.signalLost ? (e.sigmaTau * 1e6).toFixed(2) : '--';
         const bar = $('snrBar');
         bar.style.width = (isFinite(snr) ? Math.max(0, Math.min(100, (snr + 10) / 50 * 100)) : 0) + '%';
@@ -4378,10 +4396,10 @@
         if (e.signalLost) {
             lost.style.display = 'block';
             $('signalLostDetail').textContent = {
-                propagation: 'Son du drone pas encore arrivé',
-                snr: 'Drone hors portée acoustique',
-                geometry: 'Mesures TDOA inexploitables'
-            }[e.lostReason] || 'Aucun signal';
+                propagation: L('Son du drone pas encore arrivé', 'Drone sound not yet arrived'),
+                snr: L('Drone hors portée acoustique', 'Drone out of acoustic range'),
+                geometry: L('Mesures TDOA inexploitables', 'Unusable TDOA measurements')
+            }[e.lostReason] || L('Aucun signal', 'No signal');
         } else {
             lost.style.display = 'none';
         }
@@ -4670,6 +4688,7 @@
     }
 
     function init() {
+        applyLanguage();
         canvasSide = $('canvasSide'); ctxSide = canvasSide.getContext('2d');
         canvasCamera = $('canvasCamera'); ctxCamera = canvasCamera.getContext('2d');
         canvasReticle = $('canvasReticle'); ctxReticle = canvasReticle.getContext('2d');

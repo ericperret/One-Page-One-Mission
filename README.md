@@ -2,22 +2,22 @@
 ================================================================================
  Name         : Khéops - README (GitHub repository One-Page-One-Mission)
  File         : README.md
- Version      : 4.2
+ Version      : 4.3
  Date         : 17/10/2026
  Author       : Eric PERRET
  Purpose      : overview, algorithms and design decisions of the simulator
-                kheops_v42.html (French version: LISEZMOI.md)
+                kheops_v43.html (French version: LISEZMOI.md)
 ================================================================================
 -->
 
-# 🎯 One-Page-One-Mission — Khéops v4.2
+# 🎯 One-Page-One-Mission — Khéops v4.3
 
-▶️ **[Launch the simulator](https://ericperret.github.io/One-Page-One-Mission/kheops_v42.html)** — the simulation starts by itself on load.
+▶️ **[Launch the simulator](https://ericperret.github.io/One-Page-One-Mission/kheops_v43.html)** — the simulation starts by itself on load.
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Pure HTML/CSS/JS](https://img.shields.io/badge/Pure-HTML%2FCSS%2FJS-blue.svg)](#technology)
 [![No libraries](https://img.shields.io/badge/Libraries-none-green.svg)](#technology)
-[![Single file](https://img.shields.io/badge/File-single-orange.svg)](kheops_v42.html)
+[![Single file](https://img.shields.io/badge/File-single-orange.svg)](kheops_v43.html)
 
 **Passive acoustic direction-finding simulator for drones**, based on time differences of arrival (TDOA) on a 5-microphone pyramid, with an identification camera steered by acoustics only.
 
@@ -25,7 +25,7 @@ The simulator exists to **size the pyramid base**: it plots the *time to focus w
 
 🇫🇷 Version française : [LISEZMOI.md](LISEZMOI.md)
 
-![Khéops v4.2 running](screenshot.png)
+![Khéops v4.3 running](screenshot.png)
 
 ---
 
@@ -67,7 +67,7 @@ Khéops is an **observation** system: there is no weapon and no fire control.
 
 ## 2. Usage
 
-1. Open `kheops_v42.html` in a recent browser (Chrome, Edge, Firefox) — locally (`file://`) or through the GitHub Pages link.
+1. Open `kheops_v43.html` in a recent browser (Chrome, Edge, Firefox) — locally (`file://`) or through the GitHub Pages link.
 2. The simulation starts automatically. The browser asks for microphone access: it is used **only** to measure background noise (LA90). If refused, background noise is 35 dB(A). If the browser suspends audio on load, measurement resumes on the first click.
 3. **Click on the map**: moves Khéops there. Weather is reloaded as soon as the move exceeds 2 km.
 4. **Study** tab → **Lancer l'étude** (run study): computes the sizing curve (about 2 minutes in a desktop browser).
@@ -375,12 +375,13 @@ Computation runs in 25 ms slices to keep the interface responsive. Drone traject
 - Radix-2 FFT and linear algebra (Gaussian elimination, inversion) written by hand.
 - Fixed 20 ms physics step (at most 5 catch-up steps per frame), UI refreshed at 10 Hz.
 - Works offline (without map or live weather).
-- User interface in French.
+- Bilingual user interface: French when the browser language is French, English otherwise.
 
 ## History
 
 | Version | Main change |
 |---|---|
+| 4.3 | Bilingual interface (browser language: French or English) |
 | 4.2 | Autostart; exact correlation convention; track-aligned segments; exact emission-time Jacobian; multiple starts; estimated noise factor; ground echo by cepstrum; per-size ADC calibration |
 | 4.1 | Per-microphone level; level differences in the trajectory fit |
 | 4.0 | Pyramid; range from curvature; sliding least-squares trajectory; Study tab |
@@ -390,7 +391,7 @@ Computation runs in 25 ms slices to keep the interface responsive. Drone traject
 | 3.5 | Canvas map (Leaflet removed); ISO 9613-1 fixed; Kalman removed; ground truth isolated |
 | 3.4 | 1 MHz ADC, RANSAC, wind, ISO 9613-1 |
 
-The detail of each version is in the header block of `kheops_v42.html`.
+The detail of each version is in the header block of `kheops_v43.html`.
 
 ## License
 
