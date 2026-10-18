@@ -4,7 +4,7 @@
  Nom          : Khéops - Simulateur de localisation acoustique TDOA
  Fichier      : kheops_v43.html
  Version      : 4.3
- Date         : 17/10/2026
+ Date         : 18/10/2026
  Auteur       : Eric
  Langage      : HTML / CSS / JavaScript (aucune librairie)
  Dépendances  : imagerie Esri World Imagery (en ligne, © Esri © Maxar),
@@ -13,6 +13,7 @@
 --------------------------------------------------------------------------------
  Historique
  3.4  ADC 1 MHz, Kalman, RANSAC, cohérence géométrique, vent, ISO 9613-1
+ ·    (2026-10-18) charte graphique AZS : palette ardoise / ambre / cyan, bandeau AZS avec lien de retour vers www.azs.fr, polices système ; aucun changement fonctionnel
  4.3  - Interface bilingue : langue du navigateur détectée au chargement,
         français si le navigateur est en français, anglais sinon
  4.2  - Démarrage automatique de la simulation au chargement (mesure du bruit
@@ -695,11 +696,115 @@
             border-radius: 3px;
             transition: all 0.1s;
         }
+        /* ===== Charte AZS (2026-10-18) : décor seulement, couleurs de données inchangées ===== */
+        :root {
+            --bg-primary: #0e1418;
+            --bg-secondary: #18222a;
+            --bg-tertiary: #141c22;
+            --text-primary: #dfe7ec;
+            --text-secondary: #8fa1ad;
+            --border-color: #26343e;
+            --accent-cyan: #5cc8d6;
+            --accent-amber: #f0a63a;
+            --accent-amber-hover: #ffcf7a;
+        }
+        html, body { font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; }
+        *, *::before, *::after { text-shadow: none !important; }
+        h1, .stat-box .value, .cam-status-title, .panel-header h3, .data-value, .data-label, .stat-box .label,
+        .view-label, .status-badge, .version-tag, .btn, .stat-tabs button, .map-zoom button, .slider-label,
+        .alert-box, .time-display, .stat-tip, .map-attrib, .select-field, .handover-box, .chrono, .azs {
+            font-family: ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+        }
+        h1 {
+            background: none;
+            -webkit-text-fill-color: var(--text-primary);
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 1rem;
+        }
+        .azs {
+            font-weight: 800;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: -1px;
+            color: var(--accent-amber);
+            text-decoration: none;
+            padding-right: 12px;
+            margin-right: 12px;
+            border-right: 1px solid var(--border-color);
+            align-self: center;
+        }
+        .azs:hover { color: var(--accent-amber-hover); }
+        .container { height: calc(100vh - 30px); }
+        .azs-foot {
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 16px;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-color);
+            font: 600 11px/1 ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .azs-foot a { color: var(--text-secondary); text-decoration: none; }
+        .azs-foot a:hover { color: var(--accent-amber); }
+        header { background: var(--bg-tertiary); border-color: var(--border-color); border-radius: 8px; }
+        header::before { display: none; }
+        .view-panel, .panel { border-radius: 8px; box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px -18px rgba(0,0,0,.8); }
+        .panel-header { background: var(--bg-tertiary); }
+        .panel-header h3 {
+            display: inline-block;
+            position: relative;
+            padding-left: 10px;
+            color: var(--text-primary);
+            font-size: 0.66rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+        .panel-header h3::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 50%;
+            width: 3px; height: 1em;
+            transform: translateY(-50%);
+            background: var(--accent-amber);
+        }
+        .panel.accent-panel .panel-header h3 { color: var(--accent-pink); }
+        .panel.accent-panel .panel-header h3::before { background: var(--accent-pink); }
+        .view-label, .data-label, .stat-box .label, .slider-label { font-size: 0.66rem; letter-spacing: .06em; text-transform: uppercase; }
+        .view-label { color: var(--text-primary); }
+        .camera-active .view-label { color: var(--accent-pink); }
+        .btn { background: var(--bg-tertiary); border-color: #33434e; color: var(--text-primary); border-radius: 6px; }
+        .btn:hover { background: var(--bg-secondary); border-color: var(--accent-amber); color: var(--accent-amber); }
+        .btn-primary { background: var(--accent-amber); border-color: var(--accent-amber); color: #111; font-weight: 700; }
+        .btn-primary:hover { background: var(--accent-amber); border-color: var(--accent-amber); color: #111; filter: brightness(1.1); }
+        .stat-tabs button:hover { border-color: var(--accent-amber); color: var(--accent-amber); }
+        .stat-tabs button.active { background: var(--accent-amber); border-color: var(--accent-amber); color: #111; }
+        .stat-tabs .study-run { color: var(--text-primary); border-color: #33434e; }
+        .stat-tip, .stat-tip b { border-color: var(--accent-amber); }
+        .stat-tip b { color: var(--accent-amber); }
+        .time-display span { color: var(--accent-cyan); }
+        input[type="range"] { accent-color: var(--accent-amber); }
+        input[type="range"]::-webkit-slider-thumb { background: var(--accent-amber); }
+        :focus-visible { outline: 2px solid var(--accent-amber) !important; outline-offset: 1px; }
+        @media (max-width: 820px) {
+            html, body { height: auto; overflow: auto; }
+            .container { grid-template-columns: 1fr; height: auto; }
+            .views-container { grid-template-columns: 1fr; grid-template-rows: none; }
+            .view-panel { aspect-ratio: 4 / 3; }
+            header { flex-wrap: wrap; gap: 8px; }
+            .sidebar { overflow: visible; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
+            <a class="azs" href="http://www.azs.fr/" title="www.azs.fr">AZS</a>
             <div class="logo">
                 <div class="logo-icon">
                     <svg viewBox="0 0 50 50" fill="none">
@@ -1178,6 +1283,7 @@
             </div>
         </div>
     </div>
+    <footer class="azs-foot"><a href="mailto:eperret@azs.fr">eperret@azs.fr</a></footer>
     <script>
     'use strict';
     // ============================================================
