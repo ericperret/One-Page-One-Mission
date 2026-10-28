@@ -1,0 +1,42 @@
+# ==============================================================================
+#  Nom / Name : CITATION.cff
+#  Projet     : One-Page-One-Mission — https://github.com/ericperret/One-Page-One-Mission
+#  Auteur     : Eric PERRET
+#  Date       : 2026-10-27
+#  Version    : 1.0
+#  Objet      : métadonnées de citation (bouton « Cite this repository » de GitHub)
+#  Licence    : CC BY-NC 4.0 — usage commercial sur autorisation écrite (eperret@azs.fr)
+# ==============================================================================
+cff-version: 1.2.0
+message: "If you use or cite this work, please credit it as below. / Merci de citer ce travail comme ci-dessous."
+type: software
+title: "Khéops — acoustic drone localisation simulator"
+abstract: "Khéops: acoustic drone localisation simulator — TDOA on a 5-microphone array, GCC-PHAT, Chan, RANSAC, Kalman, ISO 9613-1 absorption, Doppler. Pure HTML/JS."
+authors:
+  - family-names: "PERRET"
+    given-names: "Eric"
+    email: "eperret@azs.fr"
+repository-code: "https://github.com/ericperret/One-Page-One-Mission"
+url: "https://ericperret.github.io/One-Page-One-Mission/kheops_v43.html"
+license: CC-BY-NC-4.0
+date-released: "2026-10-27"
+keywords:
+  - acoustic-localization
+  - tdoa
+  - gcc-phat
+  - microphone-array
+  - drone-detection
+  - counter-uas
+  - multilateration
+  - chan-algorithm
+  - kalman-filter
+  - ransac
+  - doppler
+  - sound-localization
+  - signal-processing
+  - simulation
+  - goniometry
+  - fire-control
+  - html5
+  - vanilla-javascript
+  - no-dependencies
